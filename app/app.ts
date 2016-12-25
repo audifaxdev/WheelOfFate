@@ -115,6 +115,7 @@ class Application {
         radius: 20,
         height: 10,
         nbBars: 120,
+        markBarHeight: .99,
         currentRotation: 0
       },
       material : {
@@ -207,8 +208,9 @@ class Application {
 
     this.circle.rotation.set(0, 0, cfgContainer.currentRotation);
     this.bars.forEach((bar: CANNON.Body, i) => {
-      let newX = cfgContainer.radius*Math.cos(i*angleFraction + cfgContainer.currentRotation);
-      let newY = cfgContainer.radius*Math.sin(i*angleFraction + cfgContainer.currentRotation);
+      let radius = i%2 ? cfgContainer.radius:cfgContainer.radius*cfgContainer.markBarHeight;
+      let newX = radius*Math.cos(i*angleFraction + cfgContainer.currentRotation);
+      let newY = radius*Math.sin(i*angleFraction + cfgContainer.currentRotation);
 
       let now = new Date().getTime();
       let dt = (lastTweenTick - now);
@@ -291,6 +293,11 @@ class Application {
     this.cannonWorld.gravity.set(0, -9.82, 0);
     this.cannonWorld.quatNormalizeFast = true;
     this.cannonWorld.quatNormalizeSkip = 8;
+    // Tweak contact properties.
+    // this.cannonWorld.defaultContactMaterial.contactEquationStiffness = 1e0; // Contact stiffness - use to make softer/harder contacts
+    // this.cannonWorld.defaultContactMaterial.contactEquationRelaxation = 10; // Stabilization time in number of timesteps
+    this.cannonWorld.defaultContactMaterial.friction = .3;
+    this.cannonWorld.defaultContactMaterial.restitution = .3;
 
     let bumpyMaterial = new CANNON.Material('bumpy');
     let bumpy_bumpy = new CANNON.ContactMaterial(
@@ -300,15 +307,9 @@ class Application {
       });
     this.cannonWorld.addContactMaterial(bumpy_bumpy);
 
-    // Tweak contact properties.
-    // this.cannonWorld.defaultContactMaterial.contactEquationStiffness = 1e0; // Contact stiffness - use to make softer/harder contacts
-    // this.cannonWorld.defaultContactMaterial.contactEquationRelaxation = 10; // Stabilization time in number of timesteps
-    // this.cannonWorld.defaultContactMaterial.friction = 10; // Stabilization time in number of timesteps
-    // this.cannonWorld.defaultContactMaterial.restitution = 10; // Stabilization time in number of timesteps
-
     let sphereShape = new CANNON.Sphere(cfgBall.radius);
     this.sphereBody = new CANNON.Body({mass: cfgBall.mass, shape: sphereShape});
-    this.sphereBody.allowSleep = true;
+    // this.sphereBody.allowSleep = true;
     // this.sphereBody.sleepTimeLimit = 1;
     // this.sphereBody.sleepSpeedLimit = .5;
     // this.sphereBody.linearDamping = .01;
@@ -338,18 +339,15 @@ class Application {
     let angleFraction = 2*Math.PI / this.cfg.container.nbBars;
 
     for(let i=0; i< this.cfg.container.nbBars; i++) {
+      let radius = i%2 ? cfgContainer.radius:cfgContainer.radius*cfgContainer.markBarHeight;
       let angularPos = i * angleFraction;
       let cylinderShape = new CANNON.Cylinder(.5, .5, 10, 4);
       let cylinderBody = new CANNON.Body({mass: 0, material: bumpyMaterial});
-      cylinderBody.allowSleep = true;
-      cylinderBody.sleepTimeLimit = 1;
+      // cylinderBody.allowSleep = true;
+      // cylinderBody.sleepTimeLimit = 1;
       cylinderBody.addShape(cylinderShape);
       cylinderBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), angularPos+ Math.PI/4);
-      cylinderBody.position.set(
-        cfgContainer.radius*Math.cos(angularPos),
-        cfgContainer.radius*Math.sin(angularPos),
-        0
-      );
+      cylinderBody.position.set(radius*Math.cos(angularPos), radius*Math.sin(angularPos), 0);
       this.cannonWorld.addBody(cylinderBody);
       this.bars.push(cylinderBody);
     }
