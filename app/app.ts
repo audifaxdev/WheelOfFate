@@ -1,8 +1,20 @@
 /// <reference types="node" />
 /// <reference types="dat-gui" />
 /// <reference types="gsap" />
-/// <reference types="stats" />
 /// <reference path="./cannon.d.ts" />
+
+declare class Stats {
+  REVISION: number;
+  domElement: HTMLDivElement;
+
+  /**
+   * @param value 0:fps, 1: ms, 2: mb, 3+: custom
+   */
+  showPanel(value: number): void;
+  begin(): void;
+  end(): number;
+  update(): void;
+}
 
 import {filter} from "lodash";
 import * as THREE from 'three';
