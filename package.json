@@ -1,7 +1,7 @@
 {
-  "name": "typescript-webpack-tree-shaking",
+  "name": "Wheel Of Fate",
   "version": "1.0.0",
-  "description": "Tree-shaking example with Typescript and Webpack",
+  "description": "",
   "main": "index.js",
   "scripts": {
     "webpack": "webpack --config webpack.config.js",
