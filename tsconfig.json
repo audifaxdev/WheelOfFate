@@ -9,7 +9,8 @@
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "sourceMap": true
+    "sourceMap": true,
+    "types": ["es6-promise"]
   },
   "files": [
     "app/app.ts"

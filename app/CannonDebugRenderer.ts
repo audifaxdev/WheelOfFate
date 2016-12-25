@@ -41,7 +41,7 @@ export class CannonDebugRenderer {
     this._material = new THREE.MeshBasicMaterial({ color: 0x00ff00, wireframe: true });
     this._sphereGeometry = new THREE.SphereGeometry(1);
     this._boxGeometry = new THREE.BoxGeometry(1, 1, 1);
-    this._planeGeometry = new THREE.PlaneGeometry( 10, 10, 10, 10 );
+    this._planeGeometry = new THREE.PlaneGeometry( 40, 40, 10, 10 );
     this._cylinderGeometry = new THREE.CylinderGeometry( 1, 1, 10, 10 );
   }
   update() {

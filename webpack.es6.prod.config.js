@@ -1,26 +1,24 @@
 'use strict';
+let BabiliPlugin = require("babili-webpack-plugin");
 let path = require('path');
 let webpack = require('webpack');
 
 module.exports = {
   entry: {
-    'app.es2015': ['./app/app.ts'],
+    'app': ['./app/app.ts'],
     'vendor': ['three', 'lodash']
   },
 
   output: {
     path: './dist',
-    filename: '[name].bundle.js'
+    filename: '[name].es6.prod.bundle.js'
   },
 
   module: {
-    loaders: [
+    rules: [
       {
         test: /\.ts$/,
-        loader: 'ts-loader',
-        query: {
-          configFileName: 'tsconfig.es2015.json'
-        }
+        use: 'ts-loader?configFileName=tsconfig.es2015.json'
       }
     ]
   },
@@ -34,10 +32,16 @@ module.exports = {
   },
 
   plugins: [
+    new webpack.ProvidePlugin({
+      _: "lodash",
+    }),
+
+    new BabiliPlugin(),
+
     new webpack.optimize.CommonsChunkPlugin({
       name: 'vendor',
       minChunks: Infinity,
-      filename: '[name].bundle.js',
+      filename: '[name].es6.prod.bundle.js',
     }),
   ],
   devtool: false

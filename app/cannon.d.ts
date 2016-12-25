@@ -1,3 +1,4 @@
+///<reference types="three" />
 declare namespace THREE {
   class CannonDebugRenderer {
     constructor(scene: THREE.Scene, world: CANNON.World);

@@ -4,22 +4,27 @@ let path = require('path');
 
 module.exports = {
   entry: {
-    'app.prod': './app/app.ts'
+    'app': ['./app/app.ts'],
+    'vendor': ['three', 'lodash']
   },
 
   output: {
     path: './dist',
-    filename: '[name].bundle.js'
+    filename: '[name].es5.prod.bundle.js'
   },
 
   module: {
-    loaders: [
-      { test: /\.ts$/, loader: 'ts' }
+    rules: [
+      { test: /\.ts$/, use: 'ts-loader' }
     ]
   },
 
   plugins: [
-    new webpack.LoaderOptwionsPlugin({
+    new webpack.ProvidePlugin({
+      THREE: "THREE",
+      _: "lodash",
+    }),
+    new webpack.LoaderOptionsPlugin({
       minimize: true,
       debug: false
     }),
@@ -35,8 +40,11 @@ module.exports = {
   ],
 
   resolve: {
-    root: [ path.join(__dirname, 'app') ],
-    extensions: ['', '.ts', '.js']
+    modules: [
+      'node_modules',
+      path.resolve(__dirname, 'app')
+    ],
+    extensions: ['.ts', '.js']
   },
 
   devtool: false

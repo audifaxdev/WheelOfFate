@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Tree-shaking example with Typescript and Webpack</title>
+    <link rel="icon" type="image/x-icon" href="favicon.ico"/>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css">
+    <style>
+        * {
+
+        }
+        div.stats {
+            position: absolute;
+            z-index: 1;
+        }
+        canvas {
+            z-index: 0;
+        }
+    </style>
+</head>
+<body>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/stats.js/r16/Stats.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/1.19.0/TweenMax.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dat-gui/0.6.2/dat.gui.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
+
+<!--<script src="./dist/vendor.es5.bundle.js"></script>-->
+<!--<script src="./dist/app.es5.bundle.js"></script>-->
+<!--<script src="./dist/vendor.es5.prod.bundle.js"></script>-->
+<!--<script src="./dist/app.es5.prod.bundle.js"></script>-->
+<!--<script src="./dist/vendor.es6.bundle.js"></script>-->
+<!--<script src="./dist/app.es6.bundle.js"></script>-->
+<script src="./dist/vendor.es6.prod.bundle.js"></script>
+<script src="./dist/app.es6.prod.bundle.js"></script>
+
+</body>
+</html>
