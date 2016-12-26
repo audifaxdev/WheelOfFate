@@ -354,12 +354,12 @@ class Application {
     for(let i=0; i< this.cfg.container.nbBars; i++) {
       let radius = i%2 ? cfgContainer.radius:cfgContainer.radius*cfgContainer.markBarHeight;
       let angularPos = i * angleFraction;
-      let boxShape = new CANNON.Box(new CANNON.Vec3(.5, .5, .5));
-      // let cylinderShape = new CANNON.Cylinder(.5, .5, 10, 4);
+      let boxShape = new CANNON.Box(new CANNON.Vec3(10, .5, .5));
       let cylinderBody = new CANNON.Body({mass: 0, material: bumpyMaterial});
+      // let cylinderShape = new CANNON.Cylinder(.5, .5, 10, 4);
       // cylinderBody.allowSleep = true;
       // cylinderBody.sleepTimeLimit = 1;
-      cylinderBody.addShape(angularPos);
+      cylinderBody.addShape(boxShape);
       cylinderBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), angularPos+ Math.PI/4);
       cylinderBody.position.set(radius*Math.cos(angularPos), radius*Math.sin(angularPos), 0);
       this.cannonWorld.addBody(cylinderBody);
