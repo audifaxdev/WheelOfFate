@@ -1,8 +1,21 @@
 /// <reference types="node" />
 /// <reference types="dat-gui" />
 /// <reference types="gsap" />
-/// <reference types="stats" />
 /// <reference path="./cannon.d.ts" />
+
+declare class Stats {
+  REVISION: number;
+  domElement: HTMLDivElement;
+
+  /**
+   * @param value 0:fps, 1: ms, 2: mb, 3+: custom
+   */
+  showPanel(value: number): void;
+  begin(): void;
+  end(): number;
+  update(): void;
+}
+
 
 import {filter} from "lodash";
 import * as THREE from 'three';
@@ -341,11 +354,12 @@ class Application {
     for(let i=0; i< this.cfg.container.nbBars; i++) {
       let radius = i%2 ? cfgContainer.radius:cfgContainer.radius*cfgContainer.markBarHeight;
       let angularPos = i * angleFraction;
-      let cylinderShape = new CANNON.Cylinder(.5, .5, 10, 4);
+      let boxShape = new CANNON.Box(new CANNON.Vec3(.5, .5, .5));
+      // let cylinderShape = new CANNON.Cylinder(.5, .5, 10, 4);
       let cylinderBody = new CANNON.Body({mass: 0, material: bumpyMaterial});
       // cylinderBody.allowSleep = true;
       // cylinderBody.sleepTimeLimit = 1;
-      cylinderBody.addShape(cylinderShape);
+      cylinderBody.addShape(angularPos);
       cylinderBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), angularPos+ Math.PI/4);
       cylinderBody.position.set(radius*Math.cos(angularPos), radius*Math.sin(angularPos), 0);
       this.cannonWorld.addBody(cylinderBody);
