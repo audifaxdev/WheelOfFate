@@ -2,46 +2,12 @@
 /// <reference types="dat-gui" />
 /// <reference types="gsap" />
 /// <reference path="./cannon.d.ts" />
-
-declare class Stats {
-  REVISION: number;
-  domElement: HTMLDivElement;
-
-  /**
-   * @param value 0:fps, 1: ms, 2: mb, 3+: custom
-   */
-  showPanel(value: number): void;
-  begin(): void;
-  end(): number;
-  update(): void;
-}
-
+/// <reference path="./extra.d.ts" />
 
 import {filter} from "lodash";
 import * as THREE from 'three';
 import {CannonDebugRenderer} from './CannonDebugRenderer';
 let OrbitControls = require('three-orbit-controls')(THREE);
-
-
-let fillTextCircle = (context, text,x,y,radius,startRotation, maxAngle) => {
-  let numRadsPerLetter = maxAngle / text.length;
-  context.save();
-  context.translate(x,y);
-  context.rotate(startRotation);
-
-  for(let i=0;i<text.length;i++) {
-    context.save();
-    context.rotate(i*numRadsPerLetter);
-
-    context.fillText(text[i],0,-radius);
-    context.restore();
-  }
-  context.restore();
-};
-
-function radianToDegree(val: number) {
-  return val*180/Math.PI;
-}
 
 interface Developer {
   name: string,
@@ -58,6 +24,34 @@ let developers: Developer[] = [
   {name: 'Stretcho', srcAvatar: './dist/img/john.png', image: null, selected: true},
   {name: 'Davo', srcAvatar: './dist/img/matthew.png', image: null, selected: true},
 ];
+
+let defaultCfg: any = {
+  physicWorld: {
+    step: 1/60,
+    subStep: 10,
+    gravity: 9.82,
+    solverIteration: 10,
+    contactEquationRelaxation: 1,
+    frictionEquationRelaxation: 1
+  },
+  container: {
+    radius: 20,
+    height: 10,
+    nbBars: 120,
+    barSize: {
+      x: .5, y: 20, z: 10
+    },
+    markBarHeight: .99,
+    currentRotation: 0
+  },
+  ball: {
+    radius: 1,
+    mass: 5,
+    sleepTimeLimit: .5,
+    sleepSpeedLimit: .3,
+    linearDamping: .3
+  }
+};
 
 class Application {
   stats: Stats;
@@ -123,23 +117,7 @@ class Application {
 
   init() {
 
-    this.cfg = {
-      container: {
-        radius: 20,
-        height: 10,
-        nbBars: 120,
-        markBarHeight: .99,
-        currentRotation: 0
-      },
-      material : {
-        friction: 0,
-        restitution: 2
-      },
-      ball: {
-        radius: 3,
-        mass: 2
-      }
-    };
+    this.cfg = defaultCfg;
 
     this.stats = new Stats();
     this.stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
@@ -168,7 +146,6 @@ class Application {
     // this.renderer.setClearColor(0xffffff);
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.addEventListener('change',this.animate.bind(this));
 
     let pointLight = new THREE.PointLight(0xffffff);
     pointLight.position.set(0,20,0);
@@ -195,12 +172,6 @@ class Application {
     this.setupPhysicalWorld();
     this.loadAssets();
 
-    this.wheelTween = TweenLite.to(cfgContainer, 10*Math.random(), {
-      currentRotation: '+='+ 100*Math.PI,
-      ease: TweenLite.defaultEase,
-      onUpdate: this.tweenWheel
-    });
-
     this.gui = new dat.GUI();
 
     developers.forEach((developer) => {
@@ -222,8 +193,9 @@ class Application {
     this.circle.rotation.set(0, 0, cfgContainer.currentRotation);
     this.bars.forEach((bar: CANNON.Body, i) => {
       let radius = i%2 ? cfgContainer.radius:cfgContainer.radius*cfgContainer.markBarHeight;
-      let newX = radius*Math.cos(i*angleFraction + cfgContainer.currentRotation);
-      let newY = radius*Math.sin(i*angleFraction + cfgContainer.currentRotation);
+      // let radius = cfgContainer.radius;
+      let newX = (cfgContainer.barSize.y+radius)*Math.cos(i*angleFraction + cfgContainer.currentRotation);
+      let newY = (cfgContainer.barSize.y+radius)*Math.sin(i*angleFraction + cfgContainer.currentRotation);
 
       let now = new Date().getTime();
       let dt = (lastTweenTick - now);
@@ -238,7 +210,7 @@ class Application {
       circularForce.scale(tanSpeed);
 
       bar.velocity = circularForce;
-      bar.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), i*angleFraction + cfgContainer.currentRotation+Math.PI/4);
+      bar.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), i*angleFraction + cfgContainer.currentRotation);
       bar.position.set(newX, newY, 0);
       lastTweenTick = now;
       lastAngle = cfgContainer.currentRotation;
@@ -248,7 +220,11 @@ class Application {
   loadAssets() {
     this.loadingManager = new THREE.LoadingManager(() => {
       //Finished loading assets
-      setInterval(this.updatePhysicalWorld, 40);
+
+      setInterval(() => {
+        console.log('Sphere Speed', this.sphereBody.velocity.length());
+        }, 2000);
+
       this.drawTexture();
       this.animate();
     });
@@ -258,16 +234,26 @@ class Application {
   }
 
   spinWheel = () => {
+
     let cfgContainer = this.cfg.container;
-    let cfgBall = this.cfg.ball;
-    this.moveBall(0, cfgContainer.radius - cfgBall.radius, 0, new CANNON.Vec3(100, 0, 0));
-    this.wheelTween.restart();
+
+    if (this.wheelTween) {
+      this.wheelTween.restart();
+    } else {
+      this.wheelTween = TweenLite.to(cfgContainer, 10*Math.random(), {
+        currentRotation: '+='+ 100*Math.PI,
+        ease: Power0.easeOut,
+        onUpdate: this.tweenWheel
+      });
+    }
+    this.moveBall(3, 3, 0, new CANNON.Vec3(40, 40, 0));
   };
 
   moveBall(x: number, y: number , z: number, vel: CANNON.Vec3 = new CANNON.Vec3(0, 0, 0)) {
     this.sphereBody.position.set(x, y, z);
     this.sphereBody.velocity = vel;
     this.syncMeshWithBody(this.ball, this.sphereBody);
+    this.sphereBody.wakeUp();
   }
 
   setupMeshes() {
@@ -299,33 +285,43 @@ class Application {
   setupPhysicalWorld() {
     let cfgContainer = this.cfg.container;
     let cfgBall = this.cfg.ball;
-    let cfgMat = this.cfg.material;
+    let phxCfg = this.cfg.physicWorld;
 
     this.cannonWorld = new CANNON.World();
     this.cannonWorld.broadphase = new CANNON.SAPBroadphase(this.cannonWorld);
-    this.cannonWorld.gravity.set(0, -9.82, 0);
-    this.cannonWorld.quatNormalizeFast = true;
-    this.cannonWorld.quatNormalizeSkip = 8;
-    // Tweak contact properties.
-    // this.cannonWorld.defaultContactMaterial.contactEquationStiffness = 1e0; // Contact stiffness - use to make softer/harder contacts
-    // this.cannonWorld.defaultContactMaterial.contactEquationRelaxation = 10; // Stabilization time in number of timesteps
-    this.cannonWorld.defaultContactMaterial.friction = .3;
-    this.cannonWorld.defaultContactMaterial.restitution = .3;
+    this.cannonWorld.gravity.set(0, -1 * phxCfg.gravity, 0);
+    // this.cannonWorld.quatNormalizeFast = true;
+    // this.cannonWorld.quatNormalizeSkip = 8;
+    this.cannonWorld.allowSleep = true;
 
+    // Max solver iterations: Use more for better force propagation, but keep in mind that it's not very computationally cheap!
+    this.cannonWorld.solver.iterations = phxCfg.solverIteration;
+    this.cannonWorld.defaultContactMaterial.contactEquationRelaxation = phxCfg.contactEquationRelaxation; // Stabilization time in number of timesteps
+    this.cannonWorld.defaultContactMaterial.frictionEquationRelaxation = phxCfg.frictionEquationRelaxation;
+
+    let groundMaterial = new CANNON.Material('ground');
     let bumpyMaterial = new CANNON.Material('bumpy');
-    let bumpy_bumpy = new CANNON.ContactMaterial(
-      bumpyMaterial, bumpyMaterial, {
-        friction: cfgMat.friction,
-        restitution: cfgMat.restitution
-      });
-    this.cannonWorld.addContactMaterial(bumpy_bumpy);
+
+    // let bumpy_bumpy = new CANNON.ContactMaterial(
+    //   bumpyMaterial, bumpyMaterial, {
+    //     friction: .3,
+    //     restitution: 1
+    // });
+
+    let bumpy_ground = new CANNON.ContactMaterial(
+      groundMaterial, bumpyMaterial, {
+        friction: .3,
+        restitution: .7,
+    });
+    // this.cannonWorld.addContactMaterial(bumpy_bumpy);
+    this.cannonWorld.addContactMaterial(bumpy_ground);
 
     let sphereShape = new CANNON.Sphere(cfgBall.radius);
-    this.sphereBody = new CANNON.Body({mass: cfgBall.mass, shape: sphereShape});
-    // this.sphereBody.allowSleep = true;
-    // this.sphereBody.sleepTimeLimit = 1;
-    // this.sphereBody.sleepSpeedLimit = .5;
-    // this.sphereBody.linearDamping = .01;
+    this.sphereBody = new CANNON.Body({mass: cfgBall.mass, shape: sphereShape, material: bumpyMaterial});
+    this.sphereBody.allowSleep = true;
+    this.sphereBody.sleepTimeLimit = cfgBall.sleepTimeLimit;
+    this.sphereBody.sleepSpeedLimit = cfgBall.sleepSpeedLimit;
+    this.sphereBody.linearDamping = cfgBall.linearDamping;
 
     this.moveBall(0,0,0);
 
@@ -334,8 +330,17 @@ class Application {
     //build container
     let planeShapeMinZ = new CANNON.Plane();
     let planeShapeMaxZ = new CANNON.Plane();
-    let planeZMin = new CANNON.Body({mass: 0, material: bumpyMaterial});
-    let planeZMax = new CANNON.Body({mass: 0, material: bumpyMaterial});
+    let planeZMin = new CANNON.Body({mass: 0, material: groundMaterial});
+    let planeZMax = new CANNON.Body({mass: 0, material: groundMaterial});
+
+    planeZMin.allowSleep = true;
+    planeZMin.sleepTimeLimit = 1;
+    planeZMin.sleepSpeedLimit = .5;
+    planeZMin.linearDamping = .01;
+    planeZMax.allowSleep = true;
+    planeZMax.sleepTimeLimit = 1;
+    planeZMax.sleepSpeedLimit = .5;
+    planeZMax.linearDamping = .01;
 
     // planeZMin.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0), Math.PI);
     planeZMax.quaternion.setFromAxisAngle(new CANNON.Vec3(1,0,0), Math.PI);
@@ -353,15 +358,26 @@ class Application {
 
     for(let i=0; i< this.cfg.container.nbBars; i++) {
       let radius = i%2 ? cfgContainer.radius:cfgContainer.radius*cfgContainer.markBarHeight;
+      // let radius = cfgContainer.radius;
       let angularPos = i * angleFraction;
-      let boxShape = new CANNON.Box(new CANNON.Vec3(10, .5, .5));
-      let cylinderBody = new CANNON.Body({mass: 0, material: bumpyMaterial});
+      let boxShape = new CANNON.Box(new CANNON.Vec3(cfgContainer.barSize.y, cfgContainer.barSize.x, cfgContainer.barSize.z));
+      let cylinderBody = new CANNON.Body({mass: 0, material: groundMaterial});
       // let cylinderShape = new CANNON.Cylinder(.5, .5, 10, 4);
-      // cylinderBody.allowSleep = true;
-      // cylinderBody.sleepTimeLimit = 1;
+      cylinderBody.allowSleep = true;
       cylinderBody.addShape(boxShape);
-      cylinderBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), angularPos+ Math.PI/4);
-      cylinderBody.position.set(radius*Math.cos(angularPos), radius*Math.sin(angularPos), 0);
+      cylinderBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), angularPos);
+      cylinderBody.position.set((cfgContainer.barSize.y+radius)*Math.cos(angularPos), (cfgContainer.barSize.y+radius)*Math.sin(angularPos), 0);
+
+      let wall = new CANNON.Plane();
+      let wallBody = new CANNON.Body({mass: 0, material: groundMaterial});
+      wallBody.addShape(wall);
+      wallBody.position.set((radius)*Math.cos(angularPos), (radius)*Math.sin(angularPos), 0);
+      wallBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI/2);
+      let rotation1 = new CANNON.Quaternion();
+      rotation1.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -Math.PI/2+ angularPos);
+      wallBody.quaternion.copy(wallBody.quaternion.mult(rotation1));
+      // this.cannonWorld.addBody(wallBody);
+
       this.cannonWorld.addBody(cylinderBody);
       this.bars.push(cylinderBody);
     }
@@ -507,9 +523,6 @@ class Application {
     let cursorSize = 5;
     ctx.fillStyle = 'red';
     ctx.beginPath();
-    // console.log('mouseUVCoord', this.mouseUVCoord);
-    // console.log('map x', xMax*this.mouseUVCoord.x);
-    // console.log('map y', xMax*this.mouseUVCoord.y);
     ctx.rect(
       xMax*this.mouseUVCoord.x - cursorSize/2,
       yMax*this.mouseUVCoord.y - cursorSize/2,
@@ -562,24 +575,46 @@ class Application {
   };
 
   updatePhysicalWorld = () => {
+    let phxCfg = this.cfg.physicWorld;
     let now = new Date().getTime();
     let dt = (now - this.lastTick) / 1000;
-    this.cannonWorld.step(1/25, dt, 2);
+    this.cannonWorld.step(phxCfg.step, dt, phxCfg.subStep);
     this.lastTick = now;
 
+    //Mesh update
     this.syncMeshWithBody(this.ball, this.sphereBody);
-
     this.cannonDebugRenderer.update();
   };
 
-  animate = () => {
+  animate = (event: any = null) => {
+    this.stats.begin();
     if (this.renderer && this.scene && this.camera) {
-      this.stats.begin();
+      this.updatePhysicalWorld();
       this.renderer.render( this.scene, this.camera );
-      this.stats.end();
     }
+    this.stats.end();
     requestAnimationFrame(this.animate);
   }
+}
+
+let fillTextCircle = (context, text,x,y,radius,startRotation, maxAngle) => {
+  let numRadsPerLetter = maxAngle / text.length;
+  context.save();
+  context.translate(x,y);
+  context.rotate(startRotation);
+
+  for(let i=0;i<text.length;i++) {
+    context.save();
+    context.rotate(i*numRadsPerLetter);
+
+    context.fillText(text[i],0,-radius);
+    context.restore();
+  }
+  context.restore();
+};
+
+function radianToDegree(val: number) {
+  return val*180/Math.PI;
 }
 
 document.addEventListener("DOMContentLoaded", function () {

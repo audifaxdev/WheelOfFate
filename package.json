@@ -4,17 +4,21 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "webpack": "webpack --config webpack.config.js",
-    "webpack-prod": "webpack --config webpack.prod.config.js",
-    "webpack-es6": "webpack --config webpack.es6.config.js",
-    "webpack-es6-prod": "webpack --config webpack.es6.prod.config.js",
-    "serve": "http-server -a 0.0.0.0 -p 9000"
+    "webpack": "webpack --progress --colors --watch --config webpack.config.js",
+    "webpack-prod": "webpack --progress --colors --watch --config webpack.prod.config.js",
+    "webpack-es6": "webpack --progress --colors --watch --config webpack.es6.config.js",
+    "webpack-es6-prod": "webpack --progress --colors --watch --config webpack.es6.prod.config.js",
+    "serve": "http-server -a 0.0.0.0 -p 9000",
+    "dev-server-es6-prod": "webpack-dev-server --progress --colors --inline --config webpack.es6.prod.config.js",
+    "start": "npm run dev-server-es6-prod"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/blacksonic/typescript-webpack-tree-shaking.git"
   },
   "keywords": [
+    "three.js",
+    "cannon.js",
     "tree-shaking",
     "typescript",
     "webpack"

@@ -32,9 +32,6 @@ module.exports = {
   },
 
   plugins: [
-    new webpack.ProvidePlugin({
-      _: "lodash",
-    }),
 
     new BabiliPlugin(),
 

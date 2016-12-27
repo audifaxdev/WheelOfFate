@@ -993,6 +993,7 @@ declare module CANNON {
   export class Solver {
 
     equations: Equation[];
+    iterations: any;
 
     solve(dy: number, world: World): number;
     addEquation(eq: Equation): void;
