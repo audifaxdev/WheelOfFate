@@ -29,7 +29,6 @@ interface Developer {
   selected: boolean
 };
 
-
 let developers: Developer[] = [
   {name: 'Davo', srcAvatar: './dist/img/matthew.png', image: null, selected: true},
   {name: 'Stretcho', srcAvatar: './dist/img/john.png', image: null, selected: true},
@@ -50,7 +49,7 @@ let defaultCfg: any = {
   container: {
     radius: 20,
     height: 10,
-    nbBars: 120,
+    nbBars: 90,
     barSize: {
       x: .5, y: 20, z: 10
     },
@@ -196,40 +195,6 @@ class Application {
     // this.moveBall(new THREE.Vector3(-cfgContainer.radius + cfgBall.radius/2, 0, 0));
   }
 
-  tweenWheel = () => {
-
-    let cfgContainer = this.cfg.container;
-    let lastTweenTick = new Date().getTime();
-    let angleFraction = 2*Math.PI / cfgContainer.nbBars;
-    let lastAngle = 0;
-
-    this.circle.rotation.set(0, 0, cfgContainer.currentRotation);
-    this.bars.forEach((bar: CANNON.Body, i) => {
-      let radius = i%2 ? cfgContainer.radius:cfgContainer.radius*cfgContainer.markBarHeight;
-      // let radius = cfgContainer.radius;
-      let newX = (cfgContainer.barSize.y+radius)*Math.cos(i*angleFraction + cfgContainer.currentRotation);
-      let newY = (cfgContainer.barSize.y+radius)*Math.sin(i*angleFraction + cfgContainer.currentRotation);
-
-      let now = new Date().getTime();
-      let dt = (lastTweenTick - now);
-      let angleDiff = cfgContainer.currentRotation - lastAngle;
-      let tanSpeed = cfgContainer.radius * angleDiff / dt;
-
-      let tanX = newX*Math.cos(Math.PI/2) - newY * Math.sin(Math.PI/2);
-      let tanY = newX*Math.sin(Math.PI/2) + newY * Math.cos(Math.PI/2);
-
-      let circularForce = new CANNON.Vec3( tanX, tanY, 0);
-      circularForce.normalize();
-      circularForce.scale(tanSpeed);
-
-      bar.velocity = circularForce;
-      bar.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), i*angleFraction + cfgContainer.currentRotation);
-      bar.position.set(newX, newY, 0);
-      lastTweenTick = now;
-      lastAngle = cfgContainer.currentRotation;
-    });
-  };
-
   loadAssets() {
     this.loadingManager = new THREE.LoadingManager(() => {
       //Finished loading assets
@@ -244,29 +209,6 @@ class Application {
     developers.forEach((element: Developer) => {
       element.image = new THREE.ImageLoader(this.loadingManager).load(element.srcAvatar);
     });
-  }
-
-  spinWheel = () => {
-
-    let cfgContainer = this.cfg.container;
-
-    if (this.wheelTween) {
-      this.wheelTween.restart();
-    } else {
-      this.wheelTween = TweenLite.to(cfgContainer, 10*Math.random(), {
-        currentRotation: '+='+ 100*Math.PI,
-        ease: Power0.easeOut,
-        onUpdate: this.tweenWheel
-      });
-    }
-    this.moveBall(3, 3, 0, new CANNON.Vec3(40, 40, 0));
-  };
-
-  moveBall(x: number, y: number , z: number, vel: CANNON.Vec3 = new CANNON.Vec3(0, 0, 0)) {
-    this.sphereBody.position.set(x, y, z);
-    this.sphereBody.velocity = vel;
-    this.syncMeshWithBody(this.ball, this.sphereBody);
-    this.sphereBody.wakeUp();
   }
 
   setupMeshes() {
@@ -325,7 +267,7 @@ class Application {
       groundMaterial, bumpyMaterial, {
         friction: .3,
         restitution: .7,
-    });
+      });
     // this.cannonWorld.addContactMaterial(bumpy_bumpy);
     this.cannonWorld.addContactMaterial(bumpy_ground);
 
@@ -373,29 +315,82 @@ class Application {
       let radius = i%2 ? cfgContainer.radius:cfgContainer.radius*cfgContainer.markBarHeight;
       // let radius = cfgContainer.radius;
       let angularPos = i * angleFraction;
-      let boxShape = new CANNON.Box(new CANNON.Vec3(cfgContainer.barSize.y, cfgContainer.barSize.x, cfgContainer.barSize.z));
-      let cylinderBody = new CANNON.Body({mass: 0, material: groundMaterial});
-      // let cylinderShape = new CANNON.Cylinder(.5, .5, 10, 4);
-      cylinderBody.allowSleep = true;
-      cylinderBody.addShape(boxShape);
-      cylinderBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), angularPos);
-      cylinderBody.position.set((cfgContainer.barSize.y+radius)*Math.cos(angularPos), (cfgContainer.barSize.y+radius)*Math.sin(angularPos), 0);
 
       let wall = new CANNON.Plane();
       let wallBody = new CANNON.Body({mass: 0, material: groundMaterial});
       wallBody.addShape(wall);
       wallBody.position.set((radius)*Math.cos(angularPos), (radius)*Math.sin(angularPos), 0);
       wallBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI/2);
-      let rotation1 = new CANNON.Quaternion();
-      rotation1.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), -Math.PI/2+ angularPos);
-      wallBody.quaternion.copy(wallBody.quaternion.mult(rotation1));
-      // this.cannonWorld.addBody(wallBody);
+      let rotation = new CANNON.Quaternion();
+      rotation.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), +3*Math.PI/2 - angularPos);
+      wallBody.quaternion.copy(wallBody.quaternion.mult(rotation));
 
-      this.cannonWorld.addBody(cylinderBody);
-      this.bars.push(cylinderBody);
+      this.cannonWorld.addBody(wallBody);
+      this.bars.push(wallBody);
     }
 
     this.cannonDebugRenderer = new CannonDebugRenderer(this.scene, this.cannonWorld);
+  }
+
+  spinWheel = () => {
+
+    let cfgContainer = this.cfg.container;
+
+    if (this.wheelTween) {
+      this.wheelTween.restart();
+    } else {
+      this.wheelTween = TweenLite.to(cfgContainer, 100, {
+        currentRotation: '+='+ 10*Math.PI,
+        ease: Power0.easeOut,
+        onUpdate: this.tweenWheel
+      });
+    }
+    this.moveBall(3, 3, 0, new CANNON.Vec3(40, 40, 0));2
+  };
+
+  tweenWheel = () => {
+
+    let cfgContainer = this.cfg.container;
+    let lastTweenTick = new Date().getTime();
+    let angleFraction = 2*Math.PI / cfgContainer.nbBars;
+    let lastAngle = 0;
+
+    this.circle.rotation.set(0, 0, cfgContainer.currentRotation);
+    this.bars.forEach((bar: CANNON.Body, i) => {
+      let angularPos = i * angleFraction;
+      let radius = i%2 ? cfgContainer.radius:cfgContainer.radius*cfgContainer.markBarHeight;
+      // let radius = cfgContainer.radius;
+      let newX = (radius)*Math.cos(i*angleFraction + cfgContainer.currentRotation);
+      let newY = (radius)*Math.sin(i*angleFraction + cfgContainer.currentRotation);
+
+      let now = new Date().getTime();
+      let dt = (lastTweenTick - now);
+      let angleDiff = cfgContainer.currentRotation - lastAngle;
+      let tanSpeed = cfgContainer.radius * angleDiff / dt;
+
+      let tanX = newX*Math.cos(Math.PI/2) - newY * Math.sin(Math.PI/2);
+      let tanY = newX*Math.sin(Math.PI/2) + newY * Math.cos(Math.PI/2);
+
+      let circularForce = new CANNON.Vec3( tanX, tanY, 0);
+      circularForce.normalize();
+      circularForce.scale(tanSpeed);
+      // bar.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI/2);
+
+      let rotation = new CANNON.Quaternion();
+      rotation.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), angularPos);
+      bar.quaternion.copy(bar.quaternion.mult(rotation));
+
+      bar.position.set(newX, newY, 0);
+      lastTweenTick = now;
+      lastAngle = cfgContainer.currentRotation;
+    });
+  };
+
+  moveBall(x: number, y: number , z: number, vel: CANNON.Vec3 = new CANNON.Vec3(0, 0, 0)) {
+    this.sphereBody.position.set(x, y, z);
+    this.sphereBody.velocity = vel;
+    this.syncMeshWithBody(this.ball, this.sphereBody);
+    this.sphereBody.wakeUp();
   }
 
   createMesh(geom) {
