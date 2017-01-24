@@ -7,7 +7,6 @@
 declare class Stats {
   REVISION: number;
   domElement: HTMLDivElement;
-
   /**
    * @param value 0:fps, 1: ms, 2: mb, 3+: custom
    */
@@ -49,7 +48,7 @@ let defaultCfg: any = {
   container: {
     radius: 20,
     height: 10,
-    nbBars: 90,
+    nbBars: 8,
     barSize: {
       x: .5, y: 20, z: 10
     },
