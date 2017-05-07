@@ -24,12 +24,10 @@
   },
   "license": "ISC",
   "dependencies": {
-    "@types/cannon": "^0.1.x",
     "@types/dat-gui": "^0.x",
     "@types/gsap": "^1.19.1",
     "@types/lodash": "^4.x",
     "@types/node": "^7.x",
-    "@types/stats": "^0.16.30",
     "@types/three": "^0.x",
     "babel-core": "^6.24.0",
     "babel-loader": "^6.3.2",

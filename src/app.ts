@@ -1,18 +1,19 @@
+///<reference path="./cannon.d.ts" />
 ///<reference path="./extra.d.ts" />
 import {TweenLite} from "gsap";
 import * as dat from 'dat-gui';
 
-// declare class Stats {
-//   REVISION: number;
-//   domElement: HTMLDivElement;
-//   /**
-//    * @param value 0:fps, 1: ms, 2: mb, 3+: custom
-//    */
-//   showPanel(value: number): void;
-//   begin(): void;
-//   end(): number;
-//   update(): void;
-// }
+declare class Stats {
+  REVISION: number;
+  domElement: HTMLDivElement;
+  /**
+   * @param value 0:fps, 1: ms, 2: mb, 3+: custom
+   */
+  showPanel(value: number): void;
+  begin(): void;
+  end(): number;
+  update(): void;
+}
 
 import {filter} from "lodash";
 import * as THREE from 'three';
@@ -46,7 +47,7 @@ let defaultCfg: any = {
   container: {
     radius: 20,
     height: 10,
-    nbBars: 8,
+    nbBars: 16,
     barSize: {
       x: .5, y: 20, z: 10
     },
@@ -339,13 +340,13 @@ class Application {
     if (this.wheelTween) {
       this.wheelTween.restart();
     } else {
-      this.wheelTween = TweenLite.to(cfgContainer, 100, {
-        currentRotation: '+='+ 10*Math.PI,
+      this.wheelTween = TweenLite.to(cfgContainer, 10, {
+        currentRotation: '+='+ 100*Math.PI,
         ease: Power0.easeOut,
         onUpdate: this.tweenWheel
       });
     }
-    this.moveBall(3, 3, 0, new CANNON.Vec3(40, 40, 0));2
+    this.moveBall(3, 3, 0, new CANNON.Vec3(40, 40, 0));
   };
 
   tweenWheel = () => {
@@ -360,27 +361,18 @@ class Application {
       let angularPos = i * angleFraction;
       let radius = i%2 ? cfgContainer.radius:cfgContainer.radius*cfgContainer.markBarHeight;
       // let radius = cfgContainer.radius;
-      let newX = (radius)*Math.cos(i*angleFraction + cfgContainer.currentRotation);
-      let newY = (radius)*Math.sin(i*angleFraction + cfgContainer.currentRotation);
+      let newX = (radius)*Math.cos(angularPos + cfgContainer.currentRotation);
+      let newY = (radius)*Math.sin(angularPos + cfgContainer.currentRotation);
 
       let now = new Date().getTime();
-      let dt = (lastTweenTick - now);
       let angleDiff = cfgContainer.currentRotation - lastAngle;
-      let tanSpeed = cfgContainer.radius * angleDiff / dt;
-
-      let tanX = newX*Math.cos(Math.PI/2) - newY * Math.sin(Math.PI/2);
-      let tanY = newX*Math.sin(Math.PI/2) + newY * Math.cos(Math.PI/2);
-
-      let circularForce = new CANNON.Vec3( tanX, tanY, 0);
-      circularForce.normalize();
-      circularForce.scale(tanSpeed);
-      // bar.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI/2);
-
-      let rotation = new CANNON.Quaternion();
-      rotation.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), angularPos);
-      bar.quaternion.copy(bar.quaternion.mult(rotation));
 
       bar.position.set(newX, newY, 0);
+      bar.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI/2);
+      let rotation = new CANNON.Quaternion();
+      rotation.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), +3*Math.PI/2 - (angularPos + cfgContainer.currentRotation));
+      bar.quaternion.copy(bar.quaternion.mult(rotation));
+
       lastTweenTick = now;
       lastAngle = cfgContainer.currentRotation;
     });

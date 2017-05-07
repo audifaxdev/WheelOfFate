@@ -2,10 +2,6 @@
 # yarn lockfile v1
 
 
-"@types/cannon@^0.1.x":
-  version "0.1.0"
-  resolved "https://registry.yarnpkg.com/@types/cannon/-/cannon-0.1.0.tgz#5120bc842074d334573c84127cb69f419691bbea"
-
 "@types/dat-gui@^0.x":
   version "0.6.2"
   resolved "https://registry.yarnpkg.com/@types/dat-gui/-/dat-gui-0.6.2.tgz#99c899b4cb354a3a9bb3d13c2dc7c96a6b83574e"
@@ -21,10 +17,6 @@
 "@types/node@^7.x":
   version "7.0.18"
   resolved "https://registry.yarnpkg.com/@types/node/-/node-7.0.18.tgz#cd67f27d3dc0cfb746f0bdd5e086c4c5d55be173"
-
-"@types/stats@^0.16.30":
-  version "0.16.30"
-  resolved "https://registry.yarnpkg.com/@types/stats/-/stats-0.16.30.tgz#deb5fa6e59c6d67bd6e0f61a51ef630a83a84ce9"
 
 "@types/three@^0.x":
   version "0.84.7"
