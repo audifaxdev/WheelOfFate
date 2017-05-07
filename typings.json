@@ -1,9 +1,0 @@
-{
-  "name": "typescript-webpack-tree-shaking",
-  "dependencies": {
-  },
-  "globalDependencies": {
-    "dat-gui": "registry:dt/dat-gui#0.6.1+20161123230753",
-    "three": "registry:dt/three#0.0.0+20160802154944"
-  }
-}
