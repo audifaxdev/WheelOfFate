@@ -8,7 +8,6 @@
  * @param {object} [options]
  */
 
-/// <reference path="./cannon.d.ts" />
 import * as THREE from 'three';
 
 export class CannonDebugRenderer {

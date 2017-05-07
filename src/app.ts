@@ -1,20 +1,18 @@
-/// <reference types="node" />
-/// <reference types="dat-gui" />
-/// <reference types="gsap" />
-/// <reference path="./cannon.d.ts" />
-/// <reference path="./extra.d.ts" />
+///<reference path="./extra.d.ts" />
+import {TweenLite} from "gsap";
+import * as dat from 'dat-gui';
 
-declare class Stats {
-  REVISION: number;
-  domElement: HTMLDivElement;
-  /**
-   * @param value 0:fps, 1: ms, 2: mb, 3+: custom
-   */
-  showPanel(value: number): void;
-  begin(): void;
-  end(): number;
-  update(): void;
-}
+// declare class Stats {
+//   REVISION: number;
+//   domElement: HTMLDivElement;
+//   /**
+//    * @param value 0:fps, 1: ms, 2: mb, 3+: custom
+//    */
+//   showPanel(value: number): void;
+//   begin(): void;
+//   end(): number;
+//   update(): void;
+// }
 
 import {filter} from "lodash";
 import * as THREE from 'three';
@@ -22,10 +20,10 @@ import {CannonDebugRenderer} from './CannonDebugRenderer';
 let OrbitControls = require('three-orbit-controls')(THREE);
 
 interface Developer {
-  name: string,
-  srcAvatar: string,
-  image: HTMLImageElement,
-  selected: boolean
+  name: string;
+  srcAvatar: string;
+  image: HTMLImageElement;
+  selected: boolean;
 };
 
 let developers: Developer[] = [
@@ -131,9 +129,12 @@ class Application {
     this.cfg = defaultCfg;
 
     this.stats = new Stats();
+    console.log('this.stats', this.stats);
     this.stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
-    this.stats.domElement.className = 'stats';
-    document.body.appendChild( this.stats.domElement );
+    if (this.stats.domElement) {
+      this.stats.domElement.className = 'stats';
+      document.body.appendChild( this.stats.domElement );
+    }
     let cfgContainer = this.cfg.container;
 
     // alert('toto');
@@ -199,7 +200,7 @@ class Application {
       //Finished loading assets
 
       setInterval(() => {
-        console.log('Sphere Speed', this.sphereBody.velocity.length());
+        // console.log('Sphere Speed', this.sphereBody.velocity.length());
         }, 2000);
 
       this.drawTexture();
@@ -271,7 +272,7 @@ class Application {
     this.cannonWorld.addContactMaterial(bumpy_ground);
 
     let sphereShape = new CANNON.Sphere(cfgBall.radius);
-    this.sphereBody = new CANNON.Body({mass: cfgBall.mass, shape: sphereShape, material: bumpyMaterial});
+    this.sphereBody = new CANNON.Body({mass: cfgBall.mass, shape: sphereShape, material: bumpyMaterial.id});
     this.sphereBody.allowSleep = true;
     this.sphereBody.sleepTimeLimit = cfgBall.sleepTimeLimit;
     this.sphereBody.sleepSpeedLimit = cfgBall.sleepSpeedLimit;
@@ -284,8 +285,8 @@ class Application {
     //build container
     let planeShapeMinZ = new CANNON.Plane();
     let planeShapeMaxZ = new CANNON.Plane();
-    let planeZMin = new CANNON.Body({mass: 0, material: groundMaterial});
-    let planeZMax = new CANNON.Body({mass: 0, material: groundMaterial});
+    let planeZMin = new CANNON.Body({mass: 0, material: groundMaterial.id});
+    let planeZMax = new CANNON.Body({mass: 0, material: groundMaterial.id});
 
     planeZMin.allowSleep = true;
     planeZMin.sleepTimeLimit = 1;
@@ -316,7 +317,7 @@ class Application {
       let angularPos = i * angleFraction;
 
       let wall = new CANNON.Plane();
-      let wallBody = new CANNON.Body({mass: 0, material: groundMaterial});
+      let wallBody = new CANNON.Body({mass: 0, material: groundMaterial.id});
       wallBody.addShape(wall);
       wallBody.position.set((radius)*Math.cos(angularPos), (radius)*Math.sin(angularPos), 0);
       wallBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI/2);

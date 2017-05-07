@@ -2,21 +2,22 @@
   "compileOnSave": false,
   "buildOnSave": false,
   "compilerOptions": {
-    "target": "es5",
-    "module": "es2015",
+    "target": "es6",
+    "module": "es6",
     "moduleResolution": "node",
-    "declaration": true,
     "removeComments": true,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
     "sourceMap": true,
-    "types": ["es6-promise"]
+    "lib": ["es6", "dom"]
   },
   "files": [
-    "app/app.ts"
+    "src/app.ts"
   ],
   "exclude": [
+    "typings/index.d.ts",
     "node_modules",
-    "dist"
+    "dist",
+    "bin"
   ]
 }
