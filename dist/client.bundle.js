@@ -29,7 +29,7 @@ let developers = [
 ];
 let defaultCfg = {
     physicWorld: {
-        step: 1 / 60,
+        step: 1 / 600,
         subStep: 10,
         gravity: 9.82,
         solverIteration: 10,
@@ -39,19 +39,19 @@ let defaultCfg = {
     container: {
         radius: 20,
         height: 10,
-        nbBars: 16,
+        nbBars: 30,
         barSize: {
             x: .5, y: 20, z: 10
         },
-        markBarHeight: .99,
+        markBarHeight: .95,
         currentRotation: 0
     },
     ball: {
-        radius: 1,
+        radius: 3,
         mass: 5,
         sleepTimeLimit: .5,
         sleepSpeedLimit: .3,
-        linearDamping: .3
+        linearDamping: .01
     }
 };
 class Application {
@@ -77,17 +77,31 @@ class Application {
             let lastAngle = 0;
             this.circle.rotation.set(0, 0, cfgContainer.currentRotation);
             this.bars.forEach((bar, i) => {
+                let wall = bar.wall;
+                let cylinder = bar.cylinder;
                 let angularPos = i * angleFraction;
-                let radius = i % 2 ? cfgContainer.radius : cfgContainer.radius * cfgContainer.markBarHeight;
-                let newX = (radius) * Math.cos(angularPos + cfgContainer.currentRotation);
-                let newY = (radius) * Math.sin(angularPos + cfgContainer.currentRotation);
+                let radius = i % 2 ? cfgContainer.radius * .98 : cfgContainer.radius * .95;
+                let newX = (cfgContainer.radius) * Math.cos(angularPos + cfgContainer.currentRotation);
+                let newY = (cfgContainer.radius) * Math.sin(angularPos + cfgContainer.currentRotation);
                 let now = new Date().getTime();
+                let dt = (lastTweenTick - now);
                 let angleDiff = cfgContainer.currentRotation - lastAngle;
-                bar.position.set(newX, newY, 0);
-                bar.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
+                let tanSpeed = cfgContainer.radius * angleDiff / dt;
+                let tanX = newX * Math.cos(Math.PI / 2) - newY * Math.sin(Math.PI / 2);
+                let tanY = newX * Math.sin(Math.PI / 2) + newY * Math.cos(Math.PI / 2);
+                let circularForce = new CANNON.Vec3(tanX, tanY, 0);
+                circularForce.normalize();
+                circularForce.scale(tanSpeed);
+                let newX2 = (cfgContainer.barSize.y + radius) * Math.cos(angularPos + cfgContainer.currentRotation);
+                let newY2 = (cfgContainer.barSize.y + radius) * Math.sin(angularPos + cfgContainer.currentRotation);
+                cylinder.velocity = circularForce;
+                cylinder.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), i * angleFraction + cfgContainer.currentRotation);
+                cylinder.position.set(newX2, newY2, 0);
+                wall.position.set(newX, newY, 0);
+                wall.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
                 let rotation = new CANNON.Quaternion();
                 rotation.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), +3 * Math.PI / 2 - (angularPos + cfgContainer.currentRotation));
-                bar.quaternion.copy(bar.quaternion.mult(rotation));
+                wall.quaternion.copy(wall.quaternion.mult(rotation));
                 lastTweenTick = now;
                 lastAngle = cfgContainer.currentRotation;
             });
@@ -226,13 +240,12 @@ class Application {
         this.cannonWorld.gravity.set(0, -1 * phxCfg.gravity, 0);
         this.cannonWorld.allowSleep = true;
         this.cannonWorld.solver.iterations = phxCfg.solverIteration;
-        this.cannonWorld.defaultContactMaterial.contactEquationRelaxation = phxCfg.contactEquationRelaxation;
         this.cannonWorld.defaultContactMaterial.frictionEquationRelaxation = phxCfg.frictionEquationRelaxation;
         let groundMaterial = new CANNON.Material('ground');
         let bumpyMaterial = new CANNON.Material('bumpy');
         let bumpy_ground = new CANNON.ContactMaterial(groundMaterial, bumpyMaterial, {
-            friction: .3,
-            restitution: .7,
+            friction: 0,
+            restitution: 1000,
         });
         this.cannonWorld.addContactMaterial(bumpy_ground);
         let sphereShape = new CANNON.Sphere(cfgBall.radius);
@@ -265,18 +278,26 @@ class Application {
         this.bars = [];
         let angleFraction = 2 * Math.PI / this.cfg.container.nbBars;
         for (let i = 0; i < this.cfg.container.nbBars; i++) {
-            let radius = i % 2 ? cfgContainer.radius : cfgContainer.radius * cfgContainer.markBarHeight;
+            let radius = i % 2 ? cfgContainer.radius * .98 : cfgContainer.radius * .90;
             let angularPos = i * angleFraction;
+            let boxShape = new CANNON.Box(new CANNON.Vec3(cfgContainer.barSize.y, cfgContainer.barSize.x, cfgContainer.barSize.z));
+            let cylinderBody = new CANNON.Body({ mass: 0, material: groundMaterial.id });
+            cylinderBody.allowSleep = true;
+            cylinderBody.addShape(boxShape);
+            cylinderBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), angularPos);
+            cylinderBody.position.set((cfgContainer.barSize.y + radius) * Math.cos(angularPos), (cfgContainer.barSize.y + radius) * Math.sin(angularPos), 0);
+            let wallRadius = cfgContainer.radius;
             let wall = new CANNON.Plane();
             let wallBody = new CANNON.Body({ mass: 0, material: groundMaterial.id });
             wallBody.addShape(wall);
-            wallBody.position.set((radius) * Math.cos(angularPos), (radius) * Math.sin(angularPos), 0);
+            wallBody.position.set((wallRadius) * Math.cos(angularPos), (wallRadius) * Math.sin(angularPos), 0);
             wallBody.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI / 2);
             let rotation = new CANNON.Quaternion();
             rotation.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), +3 * Math.PI / 2 - angularPos);
             wallBody.quaternion.copy(wallBody.quaternion.mult(rotation));
+            this.cannonWorld.addBody(cylinderBody);
             this.cannonWorld.addBody(wallBody);
-            this.bars.push(wallBody);
+            this.bars.push({ wall: wallBody, cylinder: cylinderBody });
         }
         this.cannonDebugRenderer = new __WEBPACK_IMPORTED_MODULE_4__CannonDebugRenderer__["a" /* CannonDebugRenderer */](this.scene, this.cannonWorld);
     }
