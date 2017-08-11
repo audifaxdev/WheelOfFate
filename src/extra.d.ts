@@ -1,4 +1,5 @@
 //com.greensock.easing
+declare var Expo: any;
 declare var Power0: any;
 declare var Power1: any;
 declare var Power2: any;

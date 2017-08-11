@@ -25,7 +25,7 @@ interface Developer {
   srcAvatar: string;
   image: HTMLImageElement;
   selected: boolean;
-};
+}
 
 let developers: Developer[] = [
   {name: 'Davo', srcAvatar: './dist/img/matthew.png', image: null, selected: true},
@@ -231,9 +231,47 @@ class Application {
 
     //Ball
     let sGeometry = new THREE.SphereGeometry( cfgBall.radius, 32, 32 );
-    let sMaterial = new THREE.MeshBasicMaterial( {color: 0xffff00} );
+    let sMaterial = new THREE.MeshStandardMaterial({
+      map: null,
+      color: 0xffff00,
+      metalness: 1.0
+    });
     this.ball = new THREE.Mesh( sGeometry, sMaterial );
-    // this.scene.add( this.ball );
+    this.scene.add( this.ball );
+
+    let textureLoader = new THREE.TextureLoader();
+    textureLoader.load( "/dist/img/roughness_map.jpg", function( map ) {
+      map.wrapS = THREE.RepeatWrapping;
+      map.wrapT = THREE.RepeatWrapping;
+      map.anisotropy = 4;
+      map.repeat.set( 9, 2 );
+      sMaterial.roughnessMap = map;
+      sMaterial.bumpMap = map;
+      sMaterial.needsUpdate = true;
+    } );
+
+    let genCubeUrls = function( prefix, postfix ) {
+      return [
+        prefix + 'px' + postfix, prefix + 'nx' + postfix,
+        prefix + 'py' + postfix, prefix + 'ny' + postfix,
+        prefix + 'pz' + postfix, prefix + 'nz' + postfix
+      ];
+    };
+
+    let hdrUrls = genCubeUrls( "./textures/cube/pisaHDR/", ".hdr" );
+    new THREE.HDRCubeTextureLoader().load( THREE.UnsignedByteType, hdrUrls, ( hdrCubeMap ) => {
+
+      let pmremGenerator = new THREE.PMREMGenerator( hdrCubeMap );
+      pmremGenerator.update( this.renderer );
+
+      let pmremCubeUVPacker = new THREE.PMREMCubeUVPacker( pmremGenerator.cubeLods );
+      pmremCubeUVPacker.update( this.renderer );
+
+      hdrCubeRenderTarget = pmremCubeUVPacker.CubeUVRenderTarget;
+
+    } );
+    // Lights
+
   }
 
   setupPhysicalWorld() {
@@ -255,12 +293,6 @@ class Application {
 
     let groundMaterial = new CANNON.Material('ground');
     let bumpyMaterial = new CANNON.Material('bumpy');
-
-    // let bumpy_bumpy = new CANNON.ContactMaterial(
-    //   bumpyMaterial, bumpyMaterial, {
-    //     friction: .3,
-    //     restitution: 1
-    // });
 
     let bumpy_ground = new CANNON.ContactMaterial(
       groundMaterial, bumpyMaterial, {
@@ -348,8 +380,8 @@ class Application {
       this.wheelTween.restart();
     } else {
       this.wheelTween = TweenLite.to(cfgContainer, 10, {
-        currentRotation: '+='+ 100*Math.PI,
-        ease: Power0.easeOut,
+        currentRotation: '+='+ 100*Math.PI * Math.random() * .5 + .5,
+        ease: Expo.easeOut,
         onUpdate: this.tweenWheel
       });
     }
@@ -602,6 +634,7 @@ class Application {
   };
 
   updatePhysicalWorld = () => {
+
     let phxCfg = this.cfg.physicWorld;
     let now = new Date().getTime();
     let dt = (now - this.lastTick) / 1000;
