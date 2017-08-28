@@ -1,7 +1,13 @@
 ///<reference path="./cannon.d.ts" />
 ///<reference path="./extra.d.ts" />
+///<reference types="node" />
+
 import {TweenLite} from "gsap";
 import * as dat from 'dat-gui';
+
+import HDRCubeTextureLoader from './HDRCubeTextureLoader';
+import PMREMGenerator from './PMREMGenerator';
+import PMREMCubeUVPacker from './PMREMCubeUVPacker';
 
 declare class Stats {
   REVISION: number;
@@ -74,6 +80,9 @@ class Application {
 
   //Cfg
   cfg: any;
+
+  hdrCubeRenderTarget: any;
+
 
   //Mesh
   circle: THREE.Mesh;
@@ -259,15 +268,15 @@ class Application {
     };
 
     let hdrUrls = genCubeUrls( "./textures/cube/pisaHDR/", ".hdr" );
-    new THREE.HDRCubeTextureLoader().load( THREE.UnsignedByteType, hdrUrls, ( hdrCubeMap ) => {
+    new HDRCubeTextureLoader().load( THREE.UnsignedByteType, hdrUrls, ( hdrCubeMap ) => {
 
-      let pmremGenerator = new THREE.PMREMGenerator( hdrCubeMap );
+      let pmremGenerator = new PMREMGenerator( hdrCubeMap );
       pmremGenerator.update( this.renderer );
 
-      let pmremCubeUVPacker = new THREE.PMREMCubeUVPacker( pmremGenerator.cubeLods );
+      let pmremCubeUVPacker = new PMREMCubeUVPacker( pmremGenerator.cubeLods );
       pmremCubeUVPacker.update( this.renderer );
 
-      hdrCubeRenderTarget = pmremCubeUVPacker.CubeUVRenderTarget;
+      this.hdrCubeRenderTarget = pmremCubeUVPacker.CubeUVRenderTarget;
 
     } );
     // Lights
