@@ -11,7 +11,7 @@ class HDRCubeTextureLoader {
   hdrLoader: any;
 
   constructor(manager = undefined) {
-    this.manager = ( manager !== undefined ) ? manager : THREE.DefaultLoadingManager;
+    this.manager = THREE.DefaultLoadingManager;
     // override in sub classes
     this.hdrLoader = new RGBELoader();
   }
@@ -111,7 +111,7 @@ class HDRCubeTextureLoader {
 
     let loaded = 0;
 
-    function loadHDRData( i, onLoad, onProgress, onError ) {
+    let loadHDRData = ( i, onLoad, onProgress, onError ) => {
 
       let loader = new THREE.FileLoader( this.manager );
       loader.setResponseType( 'arraybuffer' );

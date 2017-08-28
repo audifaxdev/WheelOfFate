@@ -28,7 +28,7 @@
     "@types/dat-gui": "^0.x",
     "@types/gsap": "^1.19.1",
     "@types/lodash": "^4.x",
-    "@types/node": "^7.x",
+    "@types/node": "^7.0.43",
     "@types/three": "^0.x",
     "babel-core": "^6.24.0",
     "babel-loader": "^6.3.2",
@@ -45,7 +45,7 @@
     "three": "^0.x",
     "three-orbit-controls": "^82.1.0",
     "ts-loader": "2.0.1",
-    "typescript": "^2.0.10",
+    "typescript": "^2.4.2",
     "webpack": "^2.2.1",
     "webpack-dev-server": "^2.3.0"
   },

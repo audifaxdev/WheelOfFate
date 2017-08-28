@@ -1,6 +1,5 @@
 ///<reference path="./cannon.d.ts" />
 ///<reference path="./extra.d.ts" />
-///<reference types="node" />
 
 import {TweenLite} from "gsap";
 import * as dat from 'dat-gui';
@@ -9,6 +8,7 @@ import HDRCubeTextureLoader from './HDRCubeTextureLoader';
 import PMREMGenerator from './PMREMGenerator';
 import PMREMCubeUVPacker from './PMREMCubeUVPacker';
 
+declare var require;
 declare class Stats {
   REVISION: number;
   domElement: HTMLDivElement;
