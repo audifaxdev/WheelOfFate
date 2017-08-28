@@ -151,7 +151,7 @@ class PMREMGenerator {
       },
 
       vertexShader:
-        "letying vec2 vUv;\n\
+        "varying vec2 vUv;\n\
         void main() {\n\
           vUv = uv;\n\
           gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n\
@@ -159,7 +159,7 @@ class PMREMGenerator {
 
       fragmentShader:
         "#include <common>\n\
-        letying vec2 vUv;\n\
+        varying vec2 vUv;\n\
         uniform int faceIndex;\n\
         uniform float roughness;\n\
         uniform samplerCube envMap;\n\

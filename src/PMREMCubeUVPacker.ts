@@ -147,7 +147,7 @@ class PMREMCubeUVPacker {
 
       vertexShader:
         "precision highp float;\
-        letying vec2 vUv;\
+        varying vec2 vUv;\
         void main() {\
           vUv = uv;\
           gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\
@@ -155,7 +155,7 @@ class PMREMCubeUVPacker {
 
       fragmentShader:
         "precision highp float;\
-        letying vec2 vUv;\
+        varying vec2 vUv;\
         uniform samplerCube envMap;\
         uniform float mapSize;\
         uniform vec3 testColor;\

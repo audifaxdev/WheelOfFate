@@ -256,7 +256,7 @@ class UnrealBloomPass extends Pass {
       },
 
       vertexShader:
-        "letying vec2 vUv;\n\
+        "varying vec2 vUv;\n\
         void main() {\n\
           vUv = uv;\n\
           gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n\
@@ -264,7 +264,7 @@ class UnrealBloomPass extends Pass {
 
       fragmentShader:
         "#include <common>\
-        letying vec2 vUv;\n\
+        varying vec2 vUv;\n\
         uniform sampler2D colorTexture;\n\
         uniform vec2 texSize;\
         uniform vec2 direction;\
@@ -313,14 +313,14 @@ class UnrealBloomPass extends Pass {
       },
 
       vertexShader:
-        "letying vec2 vUv;\n\
+        "varying vec2 vUv;\n\
         void main() {\n\
           vUv = uv;\n\
           gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n\
         }",
 
       fragmentShader:
-        "letying vec2 vUv;\
+        "varying vec2 vUv;\
         uniform sampler2D blurTexture1;\
         uniform sampler2D blurTexture2;\
         uniform sampler2D blurTexture3;\
