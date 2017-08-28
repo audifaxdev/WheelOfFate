@@ -8,7 +8,7 @@ import RGBELoader from './RGBELoader';
 
 class HDRCubeTextureLoader {
   manager: any;
-  hdrLoader: any;
+  hdrLoader: RGBELoader;
 
   constructor(manager = undefined) {
     this.manager = THREE.DefaultLoadingManager;
@@ -95,8 +95,6 @@ class HDRCubeTextureLoader {
 
     } )();
 
-    //
-
     let texture = new THREE.CubeTexture();
 
     texture.type = type;
@@ -115,11 +113,11 @@ class HDRCubeTextureLoader {
 
       let loader = new THREE.FileLoader( this.manager );
       loader.setResponseType( 'arraybuffer' );
-      loader.load( urls[ i ], function ( buffer ) {
+      loader.load( urls[ i ],  ( buffer ) => {
 
         loaded ++;
 
-        let texData = scope._parser( buffer );
+        let texData:any = this.hdrLoader._parser( buffer );
 
         if ( ! texData ) return;
 

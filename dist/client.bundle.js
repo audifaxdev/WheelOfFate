@@ -1,11 +1,176 @@
 webpackJsonp([0],[
 /* 0 */,
-/* 1 */,
+/* 1 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.ClearMaskPass = exports.MaskPass = exports.ShaderPass = exports.RenderPass = exports.CopyShader = undefined;
+
+var _copyshader = __webpack_require__(16);
+
+Object.defineProperty(exports, 'CopyShader', {
+  enumerable: true,
+  get: function get() {
+    return _copyshader.CopyShader;
+  }
+});
+
+var _renderpass = __webpack_require__(18);
+
+Object.defineProperty(exports, 'RenderPass', {
+  enumerable: true,
+  get: function get() {
+    return _renderpass.RenderPass;
+  }
+});
+
+var _shaderpass = __webpack_require__(19);
+
+Object.defineProperty(exports, 'ShaderPass', {
+  enumerable: true,
+  get: function get() {
+    return _shaderpass.ShaderPass;
+  }
+});
+
+var _maskpass = __webpack_require__(17);
+
+Object.defineProperty(exports, 'MaskPass', {
+  enumerable: true,
+  get: function get() {
+    return _maskpass.MaskPass;
+  }
+});
+
+var _clearmaskpass = __webpack_require__(15);
+
+Object.defineProperty(exports, 'ClearMaskPass', {
+  enumerable: true,
+  get: function get() {
+    return _clearmaskpass.ClearMaskPass;
+  }
+});
+
+var _three = __webpack_require__(0);
+
+function EffectComposer(renderer, renderTarget) {
+  this.renderer = renderer;
+
+  if (renderTarget === undefined) {
+    var width = window.innerWidth || 1;
+    var height = window.innerHeight || 1;
+    var parameters = { minFilter: _three.LinearFilter, magFilter: _three.LinearFilter, format: _three.RGBFormat, stencilBuffer: false };
+
+    renderTarget = new _three.WebGLRenderTarget(width, height, parameters);
+  }
+
+  this.renderTarget1 = renderTarget;
+  this.renderTarget2 = renderTarget.clone();
+
+  this.writeBuffer = this.renderTarget1;
+  this.readBuffer = this.renderTarget2;
+
+  this.passes = [];
+
+  this.copyPass = new _shaderpass.ShaderPass(_copyshader.CopyShader);
+}
+
+EffectComposer.prototype.swapBuffers = function () {
+  var tmp = this.readBuffer;
+  this.readBuffer = this.writeBuffer;
+  this.writeBuffer = tmp;
+};
+
+EffectComposer.prototype.addPass = function (pass) {
+  this.passes.push(pass);
+};
+
+EffectComposer.prototype.insertPass = function (pass, index) {
+  this.passes.splice(index, 0, pass);
+};
+
+EffectComposer.prototype.render = function (delta) {
+  this.writeBuffer = this.renderTarget1;
+  this.readBuffer = this.renderTarget2;
+
+  var maskActive = false;
+
+  for (var i = 0; i < this.passes.length; i++) {
+    var pass = this.passes[i];
+
+    if (!pass.enabled) continue;
+
+    pass.render(this.renderer, this.writeBuffer, this.readBuffer, delta, maskActive);
+
+    if (pass.needsSwap) {
+      if (maskActive) {
+        var context = this.renderer.context;
+
+        context.stencilFunc(context.NOTEQUAL, 1, 0xffffffff);
+
+        this.copyPass.render(this.renderer, this.writeBuffer, this.readBuffer, delta);
+
+        context.stencilFunc(context.EQUAL, 1, 0xffffffff);
+      }
+
+      this.swapBuffers();
+    }
+
+    if (pass instanceof _maskpass.MaskPass) {
+      maskActive = true;
+    } else if (pass instanceof _clearmaskpass.ClearMaskPass) {
+      maskActive = false;
+    }
+  }
+};
+
+EffectComposer.prototype.reset = function (renderTarget) {
+  if (renderTarget === undefined) {
+    renderTarget = this.renderTarget1.clone();
+
+    renderTarget.width = window.innerWidth;
+    renderTarget.height = window.innerHeight;
+  }
+
+  this.renderTarget1 = renderTarget;
+  this.renderTarget2 = renderTarget.clone();
+
+  this.writeBuffer = this.renderTarget1;
+  this.readBuffer = this.renderTarget2;
+};
+
+EffectComposer.prototype.setSize = function (width, height) {
+  var renderTarget = this.renderTarget1.clone();
+
+  renderTarget.width = width;
+  renderTarget.height = height;
+
+  this.reset(renderTarget);
+};
+
+// shared ortho camera
+
+EffectComposer.camera = new _three.OrthographicCamera(-1, 1, 1, -1, 0, 1);
+
+EffectComposer.quad = new _three.Mesh(new _three.PlaneGeometry(2, 2), null);
+
+EffectComposer.scene = new _three.Scene();
+EffectComposer.scene.add(EffectComposer.quad);
+
+exports.default = EffectComposer;
+
+/***/ }),
 /* 2 */,
 /* 3 */,
 /* 4 */,
 /* 5 */,
-/* 6 */
+/* 6 */,
+/* 7 */
 /***/ (function(module, exports) {
 
 module.exports = function( THREE ) {
@@ -1031,7 +1196,7 @@ module.exports = function( THREE ) {
 
 
 /***/ }),
-/* 7 */
+/* 8 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -1215,12 +1380,12 @@ class CannonDebugRenderer {
 
 
 /***/ }),
-/* 8 */
+/* 9 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_three__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__RGBELoader__ = __webpack_require__(13);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__RGBELoader__ = __webpack_require__(22);
 
 
 class HDRCubeTextureLoader {
@@ -1282,9 +1447,9 @@ class HDRCubeTextureLoader {
         let loadHDRData = (i, onLoad, onProgress, onError) => {
             let loader = new __WEBPACK_IMPORTED_MODULE_0_three__["FileLoader"](this.manager);
             loader.setResponseType('arraybuffer');
-            loader.load(urls[i], function (buffer) {
+            loader.load(urls[i], (buffer) => {
                 loaded++;
-                let texData = scope._parser(buffer);
+                let texData = this.hdrLoader._parser(buffer);
                 if (!texData)
                     return;
                 if (type === __WEBPACK_IMPORTED_MODULE_0_three__["FloatType"]) {
@@ -1334,7 +1499,7 @@ class HDRCubeTextureLoader {
 
 
 /***/ }),
-/* 9 */
+/* 10 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -1484,7 +1649,7 @@ class PMREMCubeUVPacker {
 
 
 /***/ }),
-/* 10 */
+/* 11 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -1693,9 +1858,559 @@ class PMREMGenerator {
 
 
 /***/ }),
-/* 11 */,
-/* 12 */,
-/* 13 */
+/* 12 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_three__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1__Pass__ = __webpack_require__(21);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__LuminosityHighPassShader__ = __webpack_require__(20);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_three_effectcomposer_es6__ = __webpack_require__(1);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3_three_effectcomposer_es6___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_3_three_effectcomposer_es6__);
+
+
+
+
+class UnrealBloomPass extends __WEBPACK_IMPORTED_MODULE_1__Pass__["a" /* default */] {
+    constructor(resolution, strength, radius, threshold) {
+        super();
+        this.BlurDirectionX = new __WEBPACK_IMPORTED_MODULE_0_three__["Vector2"](1.0, 0.0);
+        this.BlurDirectionY = new __WEBPACK_IMPORTED_MODULE_0_three__["Vector2"](0.0, 1.0);
+        this.strength = (strength !== undefined) ? strength : 1;
+        this.radius = radius;
+        this.threshold = threshold;
+        this.resolution = (resolution !== undefined) ? new __WEBPACK_IMPORTED_MODULE_0_three__["Vector2"](resolution.x, resolution.y) : new __WEBPACK_IMPORTED_MODULE_0_three__["Vector2"](256, 256);
+        let pars = { minFilter: __WEBPACK_IMPORTED_MODULE_0_three__["LinearFilter"], magFilter: __WEBPACK_IMPORTED_MODULE_0_three__["LinearFilter"], format: __WEBPACK_IMPORTED_MODULE_0_three__["RGBAFormat"] };
+        this.renderTargetsHorizontal = [];
+        this.renderTargetsVertical = [];
+        this.nMips = 5;
+        var resx = Math.round(this.resolution.x / 2);
+        var resy = Math.round(this.resolution.y / 2);
+        this.renderTargetBright = new __WEBPACK_IMPORTED_MODULE_0_three__["WebGLRenderTarget"](resx, resy, pars);
+        this.renderTargetBright.texture.generateMipmaps = false;
+        for (let i = 0; i < this.nMips; i++) {
+            var renderTarget = new __WEBPACK_IMPORTED_MODULE_0_three__["WebGLRenderTarget"](resx, resy, pars);
+            renderTarget.texture.generateMipmaps = false;
+            this.renderTargetsHorizontal.push(renderTarget);
+            var renderTarget = new __WEBPACK_IMPORTED_MODULE_0_three__["WebGLRenderTarget"](resx, resy, pars);
+            renderTarget.texture.generateMipmaps = false;
+            this.renderTargetsVertical.push(renderTarget);
+            resx = Math.round(resx / 2);
+            resy = Math.round(resy / 2);
+        }
+        let highPassShader = __WEBPACK_IMPORTED_MODULE_2__LuminosityHighPassShader__["a" /* default */];
+        this.highPassUniforms = __WEBPACK_IMPORTED_MODULE_0_three__["UniformsUtils"].clone(highPassShader.uniforms);
+        this.highPassUniforms["luminosityThreshold"].value = threshold;
+        this.highPassUniforms["smoothWidth"].value = 0.01;
+        this.materialHighPassFilter = new __WEBPACK_IMPORTED_MODULE_0_three__["ShaderMaterial"]({
+            uniforms: this.highPassUniforms,
+            vertexShader: highPassShader.vertexShader,
+            fragmentShader: highPassShader.fragmentShader,
+            defines: {}
+        });
+        this.separableBlurMaterials = [];
+        let kernelSizeArray = [3, 5, 7, 9, 11];
+        var resx = Math.round(this.resolution.x / 2);
+        var resy = Math.round(this.resolution.y / 2);
+        for (let i = 0; i < this.nMips; i++) {
+            this.separableBlurMaterials.push(this.getSeperableBlurMaterial(kernelSizeArray[i]));
+            this.separableBlurMaterials[i].uniforms["texSize"].value = new __WEBPACK_IMPORTED_MODULE_0_three__["Vector2"](resx, resy);
+            resx = Math.round(resx / 2);
+            resy = Math.round(resy / 2);
+        }
+        this.compositeMaterial = this.getCompositeMaterial(this.nMips);
+        this.compositeMaterial.uniforms["blurTexture1"].value = this.renderTargetsVertical[0].texture;
+        this.compositeMaterial.uniforms["blurTexture2"].value = this.renderTargetsVertical[1].texture;
+        this.compositeMaterial.uniforms["blurTexture3"].value = this.renderTargetsVertical[2].texture;
+        this.compositeMaterial.uniforms["blurTexture4"].value = this.renderTargetsVertical[3].texture;
+        this.compositeMaterial.uniforms["blurTexture5"].value = this.renderTargetsVertical[4].texture;
+        this.compositeMaterial.uniforms["bloomStrength"].value = strength;
+        this.compositeMaterial.uniforms["bloomRadius"].value = 0.1;
+        this.compositeMaterial.needsUpdate = true;
+        let bloomFactors = [1.0, 0.8, 0.6, 0.4, 0.2];
+        this.compositeMaterial.uniforms["bloomFactors"].value = bloomFactors;
+        this.bloomTintColors = [new __WEBPACK_IMPORTED_MODULE_0_three__["Vector3"](1, 1, 1), new __WEBPACK_IMPORTED_MODULE_0_three__["Vector3"](1, 1, 1), new __WEBPACK_IMPORTED_MODULE_0_three__["Vector3"](1, 1, 1),
+            new __WEBPACK_IMPORTED_MODULE_0_three__["Vector3"](1, 1, 1), new __WEBPACK_IMPORTED_MODULE_0_three__["Vector3"](1, 1, 1)];
+        this.compositeMaterial.uniforms["bloomTintColors"].value = this.bloomTintColors;
+        let copyShader = __WEBPACK_IMPORTED_MODULE_3_three_effectcomposer_es6__["CopyShader"];
+        this.copyUniforms = __WEBPACK_IMPORTED_MODULE_0_three__["UniformsUtils"].clone(copyShader.uniforms);
+        this.copyUniforms["opacity"].value = 1.0;
+        this.materialCopy = new __WEBPACK_IMPORTED_MODULE_0_three__["ShaderMaterial"]({
+            uniforms: this.copyUniforms,
+            vertexShader: copyShader.vertexShader,
+            fragmentShader: copyShader.fragmentShader,
+            blending: __WEBPACK_IMPORTED_MODULE_0_three__["AdditiveBlending"],
+            depthTest: false,
+            depthWrite: false,
+            transparent: true
+        });
+        this.enabled = true;
+        this.needsSwap = false;
+        this.oldClearColor = new __WEBPACK_IMPORTED_MODULE_0_three__["Color"]();
+        this.oldClearAlpha = 1;
+        this.camera = new __WEBPACK_IMPORTED_MODULE_0_three__["OrthographicCamera"](-1, 1, 1, -1, 0, 1);
+        this.scene = new __WEBPACK_IMPORTED_MODULE_0_three__["Scene"]();
+        this.quad = new __WEBPACK_IMPORTED_MODULE_0_three__["Mesh"](new __WEBPACK_IMPORTED_MODULE_0_three__["PlaneBufferGeometry"](2, 2), null);
+        this.quad.frustumCulled = false;
+        this.scene.add(this.quad);
+    }
+    dispose() {
+        for (let i = 0; i < this.renderTargetsHorizontal.length(); i++) {
+            this.renderTargetsHorizontal[i].dispose();
+        }
+        for (let i = 0; i < this.renderTargetsVertical.length(); i++) {
+            this.renderTargetsVertical[i].dispose();
+        }
+        this.renderTargetBright.dispose();
+    }
+    setSize(width, height) {
+        let resx = Math.round(width / 2);
+        let resy = Math.round(height / 2);
+        this.renderTargetBright.setSize(resx, resy);
+        for (let i = 0; i < this.nMips; i++) {
+            this.renderTargetsHorizontal[i].setSize(resx, resy);
+            this.renderTargetsVertical[i].setSize(resx, resy);
+            this.separableBlurMaterials[i].uniforms["texSize"].value = new __WEBPACK_IMPORTED_MODULE_0_three__["Vector2"](resx, resy);
+            resx = Math.round(resx / 2);
+            resy = Math.round(resy / 2);
+        }
+    }
+    render(renderer, writeBuffer, readBuffer, delta, maskActive) {
+        this.oldClearColor.copy(renderer.getClearColor());
+        this.oldClearAlpha = renderer.getClearAlpha();
+        let oldAutoClear = renderer.autoClear;
+        renderer.autoClear = false;
+        renderer.setClearColor(new __WEBPACK_IMPORTED_MODULE_0_three__["Color"](0, 0, 0), 0);
+        if (maskActive)
+            renderer.context.disable(renderer.context.STENCIL_TEST);
+        this.highPassUniforms["tDiffuse"].value = readBuffer.texture;
+        this.highPassUniforms["luminosityThreshold"].value = this.threshold;
+        this.quad.material = this.materialHighPassFilter;
+        renderer.render(this.scene, this.camera, this.renderTargetBright, true);
+        let inputRenderTarget = this.renderTargetBright;
+        for (let i = 0; i < this.nMips; i++) {
+            this.quad.material = this.separableBlurMaterials[i];
+            this.separableBlurMaterials[i].uniforms["colorTexture"].value = inputRenderTarget.texture;
+            this.separableBlurMaterials[i].uniforms["direction"].value = this.BlurDirectionX;
+            renderer.render(this.scene, this.camera, this.renderTargetsHorizontal[i], true);
+            this.separableBlurMaterials[i].uniforms["colorTexture"].value = this.renderTargetsHorizontal[i].texture;
+            this.separableBlurMaterials[i].uniforms["direction"].value = this.BlurDirectionY;
+            renderer.render(this.scene, this.camera, this.renderTargetsVertical[i], true);
+            inputRenderTarget = this.renderTargetsVertical[i];
+        }
+        this.quad.material = this.compositeMaterial;
+        this.compositeMaterial.uniforms["bloomStrength"].value = this.strength;
+        this.compositeMaterial.uniforms["bloomRadius"].value = this.radius;
+        this.compositeMaterial.uniforms["bloomTintColors"].value = this.bloomTintColors;
+        renderer.render(this.scene, this.camera, this.renderTargetsHorizontal[0], true);
+        this.quad.material = this.materialCopy;
+        this.copyUniforms["tDiffuse"].value = this.renderTargetsHorizontal[0].texture;
+        if (maskActive)
+            renderer.context.enable(renderer.context.STENCIL_TEST);
+        renderer.render(this.scene, this.camera, readBuffer, false);
+        renderer.setClearColor(this.oldClearColor, this.oldClearAlpha);
+        renderer.autoClear = oldAutoClear;
+    }
+    getSeperableBlurMaterial(kernelRadius) {
+        return new __WEBPACK_IMPORTED_MODULE_0_three__["ShaderMaterial"]({
+            defines: {
+                "KERNEL_RADIUS": kernelRadius,
+                "SIGMA": kernelRadius
+            },
+            uniforms: {
+                "colorTexture": { value: null },
+                "texSize": { value: new __WEBPACK_IMPORTED_MODULE_0_three__["Vector2"](0.5, 0.5) },
+                "direction": { value: new __WEBPACK_IMPORTED_MODULE_0_three__["Vector2"](0.5, 0.5) }
+            },
+            vertexShader: "letying vec2 vUv;\n\
+        void main() {\n\
+          vUv = uv;\n\
+          gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n\
+        }",
+            fragmentShader: "#include <common>\
+        letying vec2 vUv;\n\
+        uniform sampler2D colorTexture;\n\
+        uniform vec2 texSize;\
+        uniform vec2 direction;\
+        \
+        float gaussianPdf(in float x, in float sigma) {\
+          return 0.39894 * exp( -0.5 * x * x/( sigma * sigma))/sigma;\
+        }\
+        void main() {\n\
+          vec2 invSize = 1.0 / texSize;\
+          float fSigma = float(SIGMA);\
+          float weightSum = gaussianPdf(0.0, fSigma);\
+          vec3 diffuseSum = texture2D( colorTexture, vUv).rgb * weightSum;\
+          for( int i = 1; i < KERNEL_RADIUS; i ++ ) {\
+            float x = float(i);\
+            float w = gaussianPdf(x, fSigma);\
+            vec2 uvOffset = direction * invSize * x;\
+            vec3 sample1 = texture2D( colorTexture, vUv + uvOffset).rgb;\
+            vec3 sample2 = texture2D( colorTexture, vUv - uvOffset).rgb;\
+            diffuseSum += (sample1 + sample2) * w;\
+            weightSum += 2.0 * w;\
+          }\
+          gl_FragColor = vec4(diffuseSum/weightSum, 1.0);\n\
+        }"
+        });
+    }
+    getCompositeMaterial(nMips) {
+        return new __WEBPACK_IMPORTED_MODULE_0_three__["ShaderMaterial"]({
+            defines: {
+                "NUM_MIPS": nMips
+            },
+            uniforms: {
+                "blurTexture1": { value: null },
+                "blurTexture2": { value: null },
+                "blurTexture3": { value: null },
+                "blurTexture4": { value: null },
+                "blurTexture5": { value: null },
+                "dirtTexture": { value: null },
+                "bloomStrength": { value: 1.0 },
+                "bloomFactors": { value: null },
+                "bloomTintColors": { value: null },
+                "bloomRadius": { value: 0.0 }
+            },
+            vertexShader: "letying vec2 vUv;\n\
+        void main() {\n\
+          vUv = uv;\n\
+          gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n\
+        }",
+            fragmentShader: "letying vec2 vUv;\
+        uniform sampler2D blurTexture1;\
+        uniform sampler2D blurTexture2;\
+        uniform sampler2D blurTexture3;\
+        uniform sampler2D blurTexture4;\
+        uniform sampler2D blurTexture5;\
+        uniform sampler2D dirtTexture;\
+        uniform float bloomStrength;\
+        uniform float bloomRadius;\
+        uniform float bloomFactors[NUM_MIPS];\
+        uniform vec3 bloomTintColors[NUM_MIPS];\
+        \
+        float lerpBloomFactor(const in float factor) { \
+          float mirrorFactor = 1.2 - factor;\
+          return mix(factor, mirrorFactor, bloomRadius);\
+        }\
+        \
+        void main() {\
+          gl_FragColor = bloomStrength * ( lerpBloomFactor(bloomFactors[0]) * vec4(bloomTintColors[0], 1.0) * texture2D(blurTexture1, vUv) + \
+                          lerpBloomFactor(bloomFactors[1]) * vec4(bloomTintColors[1], 1.0) * texture2D(blurTexture2, vUv) + \
+                         lerpBloomFactor(bloomFactors[2]) * vec4(bloomTintColors[2], 1.0) * texture2D(blurTexture3, vUv) + \
+                         lerpBloomFactor(bloomFactors[3]) * vec4(bloomTintColors[3], 1.0) * texture2D(blurTexture4, vUv) + \
+                         lerpBloomFactor(bloomFactors[4]) * vec4(bloomTintColors[4], 1.0) * texture2D(blurTexture5, vUv) );\
+        }"
+        });
+    }
+}
+/* harmony default export */ __webpack_exports__["a"] = UnrealBloomPass;
+
+
+/***/ }),
+/* 13 */,
+/* 14 */,
+/* 15 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+/**
+ * @author alteredq / http://alteredqualia.com/
+ */
+
+function ClearMaskPass(scene, camera) {
+  if (!(this instanceof ClearMaskPass)) return new ClearMaskPass(scene, camera);
+  this.enabled = true;
+}
+
+ClearMaskPass.prototype.render = function (renderer, writeBuffer, readBuffer, delta) {
+  var context = renderer.context;
+  context.disable(context.STENCIL_TEST);
+};
+
+exports.ClearMaskPass = ClearMaskPass;
+
+/***/ }),
+/* 16 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+/**
+ * @author alteredq / http://alteredqualia.com/
+ *
+ * Full-screen textured quad shader
+ */
+
+var CopyShader = {
+  uniforms: {
+    'tDiffuse': { type: 't', value: null },
+    'opacity': { type: 'f', value: 1.0 }
+  },
+  vertexShader: ['varying vec2 vUv;', 'void main() {', 'vUv = uv;', 'gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );', '}'].join('\n'),
+  fragmentShader: ['uniform float opacity;', 'uniform sampler2D tDiffuse;', 'varying vec2 vUv;', 'void main() {', 'vec4 texel = texture2D( tDiffuse, vUv );', 'gl_FragColor = opacity * texel;', '}'].join('\n')
+};
+
+exports.CopyShader = CopyShader;
+
+/***/ }),
+/* 17 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+/**
+ * @author alteredq / http://alteredqualia.com/
+ */
+
+function MaskPass(scene, camera) {
+  if (!(this instanceof MaskPass)) return new MaskPass(scene, camera);
+
+  this.scene = scene;
+  this.camera = camera;
+
+  this.enabled = true;
+  this.clear = true;
+  this.needsSwap = false;
+
+  this.inverse = false;
+}
+
+MaskPass.prototype.render = function (renderer, writeBuffer, readBuffer, delta) {
+  var context = renderer.context;
+
+  // don't update color or depth
+
+  context.colorMask(false, false, false, false);
+  context.depthMask(false);
+
+  // set up stencil
+
+  var writeValue, clearValue;
+
+  if (this.inverse) {
+    writeValue = 0;
+    clearValue = 1;
+  } else {
+    writeValue = 1;
+    clearValue = 0;
+  }
+
+  context.enable(context.STENCIL_TEST);
+  context.stencilOp(context.REPLACE, context.REPLACE, context.REPLACE);
+  context.stencilFunc(context.ALWAYS, writeValue, 0xffffffff);
+  context.clearStencil(clearValue);
+
+  // draw into the stencil buffer
+
+  renderer.render(this.scene, this.camera, readBuffer, this.clear);
+  renderer.render(this.scene, this.camera, writeBuffer, this.clear);
+
+  // re-enable update of color and depth
+
+  context.colorMask(true, true, true, true);
+  context.depthMask(true);
+
+  // only render where stencil is set to 1
+
+  context.stencilFunc(context.EQUAL, 1, 0xffffffff); // draw if == 1
+  context.stencilOp(context.KEEP, context.KEEP, context.KEEP);
+};
+
+exports.MaskPass = MaskPass;
+
+/***/ }),
+/* 18 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.RenderPass = undefined;
+
+var _three = __webpack_require__(0);
+
+function RenderPass(scene, camera, overrideMaterial, clearColor, clearAlpha) {
+  if (!(this instanceof RenderPass)) return new RenderPass(scene, camera, overrideMaterial, clearColor, clearAlpha);
+
+  this.scene = scene;
+  this.camera = camera;
+
+  this.overrideMaterial = overrideMaterial;
+
+  this.clearColor = clearColor;
+  this.clearAlpha = clearAlpha !== undefined ? clearAlpha : 1;
+
+  this.oldClearColor = new _three.Color();
+  this.oldClearAlpha = 1;
+
+  this.enabled = true;
+  this.clear = true;
+  this.needsSwap = false;
+} /**
+   * @author alteredq / http://alteredqualia.com/
+   */
+
+RenderPass.prototype.render = function (renderer, writeBuffer, readBuffer, delta) {
+  this.scene.overrideMaterial = this.overrideMaterial;
+
+  if (this.clearColor) {
+    this.oldClearColor.copy(renderer.getClearColor());
+    this.oldClearAlpha = renderer.getClearAlpha();
+
+    renderer.setClearColor(this.clearColor, this.clearAlpha);
+  }
+
+  renderer.render(this.scene, this.camera, readBuffer, this.clear);
+
+  if (this.clearColor) {
+    renderer.setClearColor(this.oldClearColor, this.oldClearAlpha);
+  }
+
+  this.scene.overrideMaterial = null;
+};
+
+exports.RenderPass = RenderPass;
+
+/***/ }),
+/* 19 */
+/***/ (function(module, exports, __webpack_require__) {
+
+"use strict";
+
+
+Object.defineProperty(exports, "__esModule", {
+  value: true
+});
+exports.ShaderPass = undefined;
+
+var _index = __webpack_require__(1);
+
+var _index2 = _interopRequireDefault(_index);
+
+var _three = __webpack_require__(0);
+
+function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { default: obj }; }
+
+/**
+ * @author alteredq / http://alteredqualia.com/
+ */
+
+function ShaderPass(shader, textureID) {
+  if (!(this instanceof ShaderPass)) return new ShaderPass(shader, textureID);
+
+  this.textureID = textureID !== undefined ? textureID : 'tDiffuse';
+
+  this.uniforms = _three.UniformsUtils.clone(shader.uniforms);
+
+  this.material = new _three.ShaderMaterial({
+    uniforms: this.uniforms,
+    vertexShader: shader.vertexShader,
+    fragmentShader: shader.fragmentShader
+  });
+
+  this.renderToScreen = false;
+
+  this.enabled = true;
+  this.needsSwap = true;
+  this.clear = false;
+}
+
+ShaderPass.prototype.render = function (renderer, writeBuffer, readBuffer, delta) {
+  if (this.uniforms[this.textureID]) {
+    this.uniforms[this.textureID].value = readBuffer.texture;
+  }
+
+  _index2.default.quad.material = this.material;
+
+  if (this.renderToScreen) {
+    renderer.render(_index2.default.scene, _index2.default.camera);
+  } else {
+    renderer.render(_index2.default.scene, _index2.default.camera, writeBuffer, this.clear);
+  }
+};
+
+exports.ShaderPass = ShaderPass;
+
+/***/ }),
+/* 20 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_three__ = __webpack_require__(0);
+
+/* harmony default export */ __webpack_exports__["a"] = {
+    shaderID: "luminosityHighPass",
+    uniforms: {
+        "tDiffuse": { type: "t", value: null },
+        "luminosityThreshold": { type: "f", value: 1.0 },
+        "smoothWidth": { type: "f", value: 1.0 },
+        "defaultColor": { type: "c", value: new __WEBPACK_IMPORTED_MODULE_0_three__["Color"](0x000000) },
+        "defaultOpacity": { type: "f", value: 0.0 }
+    },
+    vertexShader: [
+        "varying vec2 vUv;",
+        "void main() {",
+        "vUv = uv;",
+        "gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );",
+        "}"
+    ].join("\n"),
+    fragmentShader: [
+        "uniform sampler2D tDiffuse;",
+        "uniform vec3 defaultColor;",
+        "uniform float defaultOpacity;",
+        "uniform float luminosityThreshold;",
+        "uniform float smoothWidth;",
+        "varying vec2 vUv;",
+        "void main() {",
+        "vec4 texel = texture2D( tDiffuse, vUv );",
+        "vec3 luma = vec3( 0.299, 0.587, 0.114 );",
+        "float v = dot( texel.xyz, luma );",
+        "vec4 outputColor = vec4( defaultColor.rgb, defaultOpacity );",
+        "float alpha = smoothstep( luminosityThreshold, luminosityThreshold + smoothWidth, v );",
+        "gl_FragColor = mix( outputColor, texel, alpha );",
+        "}"
+    ].join("\n")
+};
+
+
+/***/ }),
+/* 21 */
+/***/ (function(module, __webpack_exports__, __webpack_require__) {
+
+"use strict";
+class Pass {
+    constructor() {
+        this.enabled = true;
+        this.needsSwap = true;
+        this.clear = false;
+        this.renderToScreen = false;
+    }
+    setSize(width, height) { }
+    render(renderer, writeBuffer, readBuffer, delta, maskActive) {
+        console.error("THREE.Pass: .render() must be implemented in derived pass.");
+    }
+}
+/* harmony default export */ __webpack_exports__["a"] = Pass;
+
+
+/***/ }),
+/* 22 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
@@ -1704,200 +2419,202 @@ class PMREMGenerator {
 class RGBELoader extends __WEBPACK_IMPORTED_MODULE_0_three__["DataTextureLoader"] {
     constructor(manager = undefined) {
         super(manager);
-        this.manager = (manager !== undefined) ? manager : __WEBPACK_IMPORTED_MODULE_0_three__["DefaultLoadingManager"];
-    }
-    _parser(buffer) {
-        let RGBE_RETURN_SUCCESS = 0, RGBE_RETURN_FAILURE = -1, rgbe_read_error = 1, rgbe_write_error = 2, rgbe_format_error = 3, rgbe_memory_error = 4, rgbe_error = function (rgbe_error_code, msg = '') {
-            switch (rgbe_error_code) {
-                case rgbe_read_error:
-                    console.error("THREE.RGBELoader Read Error: " + (msg || ''));
-                    break;
-                case rgbe_write_error:
-                    console.error("THREE.RGBELoader Write Error: " + (msg || ''));
-                    break;
-                case rgbe_format_error:
-                    console.error("THREE.RGBELoader Bad File Format: " + (msg || ''));
-                    break;
-                default:
-                case rgbe_memory_error: console.error("THREE.RGBELoader: Error: " + (msg || ''));
-            }
-            return RGBE_RETURN_FAILURE;
-        }, RGBE_DATA_RED = 0, RGBE_DATA_GREEN = 1, RGBE_DATA_BLUE = 2, RGBE_DATA_SIZE = 4, RGBE_VALID_PROGRAMTYPE = 1, RGBE_VALID_FORMAT = 2, RGBE_VALID_DIMENSIONS = 4, NEWLINE = "\n", fgets = function (buffer, lineLimit = 1024, consume = false) {
-            lineLimit = !lineLimit ? 1024 : lineLimit;
-            let p = buffer.pos, i = -1, len = 0, s = '', chunkSize = 128, chunk = String.fromCharCode.apply(null, new Uint16Array(buffer.subarray(p, p + chunkSize)));
-            while ((0 > (i = chunk.indexOf(NEWLINE))) && (len < lineLimit) && (p < buffer.byteLength)) {
-                s += chunk;
-                len += chunk.length;
-                p += chunkSize;
-                chunk += String.fromCharCode.apply(null, new Uint16Array(buffer.subarray(p, p + chunkSize)));
-            }
-            if (-1 < i) {
-                if (false !== consume)
-                    buffer.pos += len + i + 1;
-                return s + chunk.slice(0, i);
-            }
-            return false;
-        }, RGBE_ReadHeader = function (buffer) {
-            let line, match, magic_token_re = /^#\?(\S+)$/, gamma_re = /^\s*GAMMA\s*=\s*(\d+(\.\d+)?)\s*$/, exposure_re = /^\s*EXPOSURE\s*=\s*(\d+(\.\d+)?)\s*$/, format_re = /^\s*FORMAT=(\S+)\s*$/, dimensions_re = /^\s*\-Y\s+(\d+)\s+\+X\s+(\d+)\s*$/, header = {
-                valid: 0,
-                string: '',
-                comments: '',
-                programtype: 'RGBE',
-                format: '',
-                gamma: 1.0,
-                exposure: 1.0,
-                width: 0, height: 0
-            };
-            if (buffer.pos >= buffer.byteLength || !(line = fgets(buffer))) {
-                return rgbe_error(rgbe_read_error, "no header found");
-            }
-            if (!(match = line.match(magic_token_re))) {
-                return rgbe_error(rgbe_format_error, "bad initial token");
-            }
-            header.valid |= RGBE_VALID_PROGRAMTYPE;
-            header.programtype = match[1];
-            header.string += line + "\n";
-            while (true) {
-                line = fgets(buffer);
-                if (false === line)
-                    break;
+        this._parser = (buffer) => {
+            let RGBE_RETURN_SUCCESS = 0, RGBE_RETURN_FAILURE = -1, rgbe_read_error = 1, rgbe_write_error = 2, rgbe_format_error = 3, rgbe_memory_error = 4, rgbe_error = function (rgbe_error_code, msg = '') {
+                switch (rgbe_error_code) {
+                    case rgbe_read_error:
+                        console.error("THREE.RGBELoader Read Error: " + (msg || ''));
+                        break;
+                    case rgbe_write_error:
+                        console.error("THREE.RGBELoader Write Error: " + (msg || ''));
+                        break;
+                    case rgbe_format_error:
+                        console.error("THREE.RGBELoader Bad File Format: " + (msg || ''));
+                        break;
+                    default:
+                    case rgbe_memory_error: console.error("THREE.RGBELoader: Error: " + (msg || ''));
+                }
+                return RGBE_RETURN_FAILURE;
+            }, RGBE_DATA_RED = 0, RGBE_DATA_GREEN = 1, RGBE_DATA_BLUE = 2, RGBE_DATA_SIZE = 4, RGBE_VALID_PROGRAMTYPE = 1, RGBE_VALID_FORMAT = 2, RGBE_VALID_DIMENSIONS = 4, NEWLINE = "\n", fgets = function (buffer, lineLimit = 1024, consume = undefined) {
+                lineLimit = !lineLimit ? 1024 : lineLimit;
+                let p = buffer.pos, i = -1, len = 0, s = '', chunkSize = 128, chunk = String.fromCharCode.apply(null, new Uint16Array(buffer.subarray(p, p + chunkSize)));
+                while ((0 > (i = chunk.indexOf(NEWLINE))) && (len < lineLimit) && (p < buffer.byteLength)) {
+                    s += chunk;
+                    len += chunk.length;
+                    p += chunkSize;
+                    chunk += String.fromCharCode.apply(null, new Uint16Array(buffer.subarray(p, p + chunkSize)));
+                }
+                if (-1 < i) {
+                    if (false !== consume)
+                        buffer.pos += len + i + 1;
+                    return s + chunk.slice(0, i);
+                }
+                return false;
+            }, RGBE_ReadHeader = function (buffer) {
+                let line, match, magic_token_re = /^#\?(\S+)$/, gamma_re = /^\s*GAMMA\s*=\s*(\d+(\.\d+)?)\s*$/, exposure_re = /^\s*EXPOSURE\s*=\s*(\d+(\.\d+)?)\s*$/, format_re = /^\s*FORMAT=(\S+)\s*$/, dimensions_re = /^\s*\-Y\s+(\d+)\s+\+X\s+(\d+)\s*$/, header = {
+                    valid: 0,
+                    string: '',
+                    comments: '',
+                    programtype: 'RGBE',
+                    format: '',
+                    gamma: 1.0,
+                    exposure: 1.0,
+                    width: 0, height: 0
+                };
+                if (buffer.pos >= buffer.byteLength || !(line = fgets(buffer))) {
+                    return rgbe_error(rgbe_read_error, "no header found");
+                }
+                if (!(match = line.match(magic_token_re))) {
+                    return rgbe_error(rgbe_format_error, "bad initial token");
+                }
+                header.valid |= RGBE_VALID_PROGRAMTYPE;
+                header.programtype = match[1];
                 header.string += line + "\n";
-                if ('#' === line.charAt(0)) {
-                    header.comments += line + "\n";
-                    continue;
-                }
-                if (match = line.match(gamma_re)) {
-                    header.gamma = parseFloat(match[1]);
-                }
-                if (match = line.match(exposure_re)) {
-                    header.exposure = parseFloat(match[1]);
-                }
-                if (match = line.match(format_re)) {
-                    header.valid |= RGBE_VALID_FORMAT;
-                    header.format = match[1];
-                }
-                if (match = line.match(dimensions_re)) {
-                    header.valid |= RGBE_VALID_DIMENSIONS;
-                    header.height = parseInt(match[1], 10);
-                    header.width = parseInt(match[2], 10);
-                }
-                if ((header.valid & RGBE_VALID_FORMAT) && (header.valid & RGBE_VALID_DIMENSIONS))
-                    break;
-            }
-            if (!(header.valid & RGBE_VALID_FORMAT)) {
-                return rgbe_error(rgbe_format_error, "missing format specifier");
-            }
-            if (!(header.valid & RGBE_VALID_DIMENSIONS)) {
-                return rgbe_error(rgbe_format_error, "missing image size specifier");
-            }
-            return header;
-        }, RGBE_ReadPixels_RLE = function (buffer, w, h) {
-            let data_rgba, offset, pos, count, byteValue, scanline_buffer, ptr, ptr_end, i, l, off, isEncodedRun, scanline_width = w, num_scanlines = h, rgbeStart;
-            if (((scanline_width < 8) || (scanline_width > 0x7fff)) ||
-                ((2 !== buffer[0]) || (2 !== buffer[1]) || (buffer[2] & 0x80))) {
-                return new Uint8Array(buffer);
-            }
-            if (scanline_width !== ((buffer[2] << 8) | buffer[3])) {
-                return rgbe_error(rgbe_format_error, "wrong scanline width");
-            }
-            data_rgba = new Uint8Array(4 * w * h);
-            if (!data_rgba || !data_rgba.length) {
-                return rgbe_error(rgbe_memory_error, "unable to allocate buffer space");
-            }
-            offset = 0;
-            pos = 0;
-            ptr_end = 4 * scanline_width;
-            rgbeStart = new Uint8Array(4);
-            scanline_buffer = new Uint8Array(ptr_end);
-            while ((num_scanlines > 0) && (pos < buffer.byteLength)) {
-                if (pos + 4 > buffer.byteLength) {
-                    return rgbe_error(rgbe_read_error);
-                }
-                rgbeStart[0] = buffer[pos++];
-                rgbeStart[1] = buffer[pos++];
-                rgbeStart[2] = buffer[pos++];
-                rgbeStart[3] = buffer[pos++];
-                if ((2 != rgbeStart[0]) || (2 != rgbeStart[1]) || (((rgbeStart[2] << 8) | rgbeStart[3]) != scanline_width)) {
-                    return rgbe_error(rgbe_format_error, "bad rgbe scanline format");
-                }
-                ptr = 0;
-                while ((ptr < ptr_end) && (pos < buffer.byteLength)) {
-                    count = buffer[pos++];
-                    isEncodedRun = count > 128;
-                    if (isEncodedRun)
-                        count -= 128;
-                    if ((0 === count) || (ptr + count > ptr_end)) {
-                        return rgbe_error(rgbe_format_error, "bad scanline data");
+                while (true) {
+                    line = fgets(buffer);
+                    if (false === line)
+                        break;
+                    header.string += line + "\n";
+                    if ('#' === line.charAt(0)) {
+                        header.comments += line + "\n";
+                        continue;
                     }
-                    if (isEncodedRun) {
-                        byteValue = buffer[pos++];
-                        for (i = 0; i < count; i++) {
-                            scanline_buffer[ptr++] = byteValue;
+                    if (match = line.match(gamma_re)) {
+                        header.gamma = parseFloat(match[1]);
+                    }
+                    if (match = line.match(exposure_re)) {
+                        header.exposure = parseFloat(match[1]);
+                    }
+                    if (match = line.match(format_re)) {
+                        header.valid |= RGBE_VALID_FORMAT;
+                        header.format = match[1];
+                    }
+                    if (match = line.match(dimensions_re)) {
+                        header.valid |= RGBE_VALID_DIMENSIONS;
+                        header.height = parseInt(match[1], 10);
+                        header.width = parseInt(match[2], 10);
+                    }
+                    if ((header.valid & RGBE_VALID_FORMAT) && (header.valid & RGBE_VALID_DIMENSIONS))
+                        break;
+                }
+                if (!(header.valid & RGBE_VALID_FORMAT)) {
+                    return rgbe_error(rgbe_format_error, "missing format specifier");
+                }
+                if (!(header.valid & RGBE_VALID_DIMENSIONS)) {
+                    return rgbe_error(rgbe_format_error, "missing image size specifier");
+                }
+                return header;
+            }, RGBE_ReadPixels_RLE = function (buffer, w, h) {
+                let data_rgba, offset, pos, count, byteValue, scanline_buffer, ptr, ptr_end, i, l, off, isEncodedRun, scanline_width = w, num_scanlines = h, rgbeStart;
+                if (((scanline_width < 8) || (scanline_width > 0x7fff)) ||
+                    ((2 !== buffer[0]) || (2 !== buffer[1]) || (buffer[2] & 0x80))) {
+                    return new Uint8Array(buffer);
+                }
+                if (scanline_width !== ((buffer[2] << 8) | buffer[3])) {
+                    return rgbe_error(rgbe_format_error, "wrong scanline width");
+                }
+                data_rgba = new Uint8Array(4 * w * h);
+                if (!data_rgba || !data_rgba.length) {
+                    return rgbe_error(rgbe_memory_error, "unable to allocate buffer space");
+                }
+                offset = 0;
+                pos = 0;
+                ptr_end = 4 * scanline_width;
+                rgbeStart = new Uint8Array(4);
+                scanline_buffer = new Uint8Array(ptr_end);
+                while ((num_scanlines > 0) && (pos < buffer.byteLength)) {
+                    if (pos + 4 > buffer.byteLength) {
+                        return rgbe_error(rgbe_read_error);
+                    }
+                    rgbeStart[0] = buffer[pos++];
+                    rgbeStart[1] = buffer[pos++];
+                    rgbeStart[2] = buffer[pos++];
+                    rgbeStart[3] = buffer[pos++];
+                    if ((2 != rgbeStart[0]) || (2 != rgbeStart[1]) || (((rgbeStart[2] << 8) | rgbeStart[3]) != scanline_width)) {
+                        return rgbe_error(rgbe_format_error, "bad rgbe scanline format");
+                    }
+                    ptr = 0;
+                    while ((ptr < ptr_end) && (pos < buffer.byteLength)) {
+                        count = buffer[pos++];
+                        isEncodedRun = count > 128;
+                        if (isEncodedRun)
+                            count -= 128;
+                        if ((0 === count) || (ptr + count > ptr_end)) {
+                            return rgbe_error(rgbe_format_error, "bad scanline data");
+                        }
+                        if (isEncodedRun) {
+                            byteValue = buffer[pos++];
+                            for (i = 0; i < count; i++) {
+                                scanline_buffer[ptr++] = byteValue;
+                            }
+                        }
+                        else {
+                            scanline_buffer.set(buffer.subarray(pos, pos + count), ptr);
+                            ptr += count;
+                            pos += count;
                         }
                     }
-                    else {
-                        scanline_buffer.set(buffer.subarray(pos, pos + count), ptr);
-                        ptr += count;
-                        pos += count;
+                    l = scanline_width;
+                    for (i = 0; i < l; i++) {
+                        off = 0;
+                        data_rgba[offset] = scanline_buffer[i + off];
+                        off += scanline_width;
+                        data_rgba[offset + 1] = scanline_buffer[i + off];
+                        off += scanline_width;
+                        data_rgba[offset + 2] = scanline_buffer[i + off];
+                        off += scanline_width;
+                        data_rgba[offset + 3] = scanline_buffer[i + off];
+                        offset += 4;
                     }
+                    num_scanlines--;
                 }
-                l = scanline_width;
-                for (i = 0; i < l; i++) {
-                    off = 0;
-                    data_rgba[offset] = scanline_buffer[i + off];
-                    off += scanline_width;
-                    data_rgba[offset + 1] = scanline_buffer[i + off];
-                    off += scanline_width;
-                    data_rgba[offset + 2] = scanline_buffer[i + off];
-                    off += scanline_width;
-                    data_rgba[offset + 3] = scanline_buffer[i + off];
-                    offset += 4;
+                return data_rgba;
+            };
+            let byteArray = new Uint8Array(buffer), byteLength = byteArray.byteLength;
+            byteArray.pos = 0;
+            let rgbe_header_info = RGBE_ReadHeader(byteArray);
+            if (RGBE_RETURN_FAILURE !== rgbe_header_info) {
+                let w = rgbe_header_info.width, h = rgbe_header_info.height, image_rgba_data = RGBE_ReadPixels_RLE(byteArray.subarray(byteArray.pos), w, h);
+                if (RGBE_RETURN_FAILURE !== image_rgba_data) {
+                    return {
+                        width: w, height: h,
+                        data: image_rgba_data,
+                        header: rgbe_header_info.string,
+                        gamma: rgbe_header_info.gamma,
+                        exposure: rgbe_header_info.exposure,
+                        format: __WEBPACK_IMPORTED_MODULE_0_three__["RGBEFormat"],
+                        type: __WEBPACK_IMPORTED_MODULE_0_three__["UnsignedByteType"]
+                    };
                 }
-                num_scanlines--;
             }
-            return data_rgba;
+            return null;
         };
-        let byteArray = new Uint8Array(buffer), byteLength = byteArray.byteLength;
-        byteArray.pos = 0;
-        let rgbe_header_info = RGBE_ReadHeader(byteArray);
-        if (RGBE_RETURN_FAILURE !== rgbe_header_info) {
-            let w = rgbe_header_info.width, h = rgbe_header_info.height, image_rgba_data = RGBE_ReadPixels_RLE(byteArray.subarray(byteArray.pos), w, h);
-            if (RGBE_RETURN_FAILURE !== image_rgba_data) {
-                return {
-                    width: w, height: h,
-                    data: image_rgba_data,
-                    header: rgbe_header_info.string,
-                    gamma: rgbe_header_info.gamma,
-                    exposure: rgbe_header_info.exposure,
-                    format: __WEBPACK_IMPORTED_MODULE_0_three__["RGBEFormat"],
-                    type: __WEBPACK_IMPORTED_MODULE_0_three__["UnsignedByteType"]
-                };
-            }
-        }
-        return null;
     }
 }
 /* harmony default export */ __webpack_exports__["a"] = RGBELoader;
 
 
 /***/ }),
-/* 14 */,
-/* 15 */
+/* 23 */,
+/* 24 */
 /***/ (function(module, __webpack_exports__, __webpack_require__) {
 
 "use strict";
 Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_gsap__ = __webpack_require__(2);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_gsap__ = __webpack_require__(3);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_0_gsap___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_0_gsap__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_dat_gui__ = __webpack_require__(1);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_dat_gui__ = __webpack_require__(2);
 /* harmony import */ var __WEBPACK_IMPORTED_MODULE_1_dat_gui___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_1_dat_gui__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__HDRCubeTextureLoader__ = __webpack_require__(8);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__PMREMGenerator__ = __webpack_require__(10);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__PMREMCubeUVPacker__ = __webpack_require__(9);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_lodash__ = __webpack_require__(3);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_lodash___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_5_lodash__);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_6_three__ = __webpack_require__(0);
-/* harmony import */ var __WEBPACK_IMPORTED_MODULE_7__CannonDebugRenderer__ = __webpack_require__(7);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_2__HDRCubeTextureLoader__ = __webpack_require__(9);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_3__PMREMGenerator__ = __webpack_require__(11);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_4__PMREMCubeUVPacker__ = __webpack_require__(10);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_three_effectcomposer_es6__ = __webpack_require__(1);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_5_three_effectcomposer_es6___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_5_three_effectcomposer_es6__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_6__UnrealBloomPass__ = __webpack_require__(12);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_7_lodash__ = __webpack_require__(4);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_7_lodash___default = __webpack_require__.n(__WEBPACK_IMPORTED_MODULE_7_lodash__);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_8_three__ = __webpack_require__(0);
+/* harmony import */ var __WEBPACK_IMPORTED_MODULE_9__CannonDebugRenderer__ = __webpack_require__(8);
 
 
 
@@ -1906,7 +2623,9 @@ Object.defineProperty(__webpack_exports__, "__esModule", { value: true });
 
 
 
-let OrbitControls = __webpack_require__(6)(__WEBPACK_IMPORTED_MODULE_6_three__);
+
+
+let OrbitControls = __webpack_require__(7)(__WEBPACK_IMPORTED_MODULE_8_three__);
 let developers = [
     { name: 'Davo', srcAvatar: './dist/img/matthew.png', image: null, selected: true },
     { name: 'Stretcho', srcAvatar: './dist/img/john.png', image: null, selected: true },
@@ -2036,7 +2755,6 @@ class Application {
         this.init();
     }
     free() {
-        this.lights = [];
         this.scene = null;
         this.renderer = null;
         this.camera = null;
@@ -2054,33 +2772,23 @@ class Application {
             document.body.appendChild(this.stats.domElement);
         }
         let cfgContainer = this.cfg.container;
-        this.mouse = new __WEBPACK_IMPORTED_MODULE_6_three__["Vector2"](0, 0);
-        this.mouseUVCoord = new __WEBPACK_IMPORTED_MODULE_6_three__["Vector2"](0, 0);
-        this.onClickPosition = new __WEBPACK_IMPORTED_MODULE_6_three__["Vector2"](0, 0);
-        this.raycaster = new __WEBPACK_IMPORTED_MODULE_6_three__["Raycaster"]();
-        this.scene = new __WEBPACK_IMPORTED_MODULE_6_three__["Scene"]();
+        this.mouse = new __WEBPACK_IMPORTED_MODULE_8_three__["Vector2"](0, 0);
+        this.mouseUVCoord = new __WEBPACK_IMPORTED_MODULE_8_three__["Vector2"](0, 0);
+        this.onClickPosition = new __WEBPACK_IMPORTED_MODULE_8_three__["Vector2"](0, 0);
+        this.raycaster = new __WEBPACK_IMPORTED_MODULE_8_three__["Raycaster"]();
+        this.scene = new __WEBPACK_IMPORTED_MODULE_8_three__["Scene"]();
         this.fbo = document.createElement('canvas');
         this.fbo.width = 512;
         this.fbo.height = 512;
-        this.camera = new __WEBPACK_IMPORTED_MODULE_6_three__["PerspectiveCamera"](75, window.innerWidth / window.innerHeight, 1, 10000);
-        this.renderer = new __WEBPACK_IMPORTED_MODULE_6_three__["WebGLRenderer"]();
+        this.camera = new __WEBPACK_IMPORTED_MODULE_8_three__["PerspectiveCamera"](75, window.innerWidth / window.innerHeight, 1, 10000);
+        this.renderer = new __WEBPACK_IMPORTED_MODULE_8_three__["WebGLRenderer"]();
         this.renderer.setSize(window.innerWidth, window.innerHeight);
         this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-        let pointLight = new __WEBPACK_IMPORTED_MODULE_6_three__["PointLight"](0xffffff);
-        pointLight.position.set(0, 20, 0);
-        this.scene.add(pointLight);
-        let ambientLight = new __WEBPACK_IMPORTED_MODULE_6_three__["AmbientLight"](0x444444);
-        this.scene.add(ambientLight);
-        let directionalLight = new __WEBPACK_IMPORTED_MODULE_6_three__["DirectionalLight"](0xffeedd);
-        directionalLight.position.set(0, 0, 1).normalize();
-        this.scene.add(directionalLight);
-        this.lights.push(pointLight);
-        this.lights.push(ambientLight);
-        this.lights.push(directionalLight);
+        this.renderer.shadowMap.enabled = true;
         this.renderer.domElement.addEventListener('mousemove', this.mouseMove, false);
         document.body.appendChild(this.renderer.domElement);
         this.camera.position.set(100, 0, 0);
-        this.camera.lookAt(new __WEBPACK_IMPORTED_MODULE_6_three__["Vector3"](0, 0, 0));
+        this.camera.lookAt(new __WEBPACK_IMPORTED_MODULE_8_three__["Vector3"](0, 0, 0));
         this.setupMeshes();
         this.setupPhysicalWorld();
         this.loadAssets();
@@ -2091,43 +2799,39 @@ class Application {
         this.gui.add({ spinWheel: this.spinWheel }, 'spinWheel');
     }
     loadAssets() {
-        this.loadingManager = new __WEBPACK_IMPORTED_MODULE_6_three__["LoadingManager"](() => {
+        this.loadingManager = new __WEBPACK_IMPORTED_MODULE_8_three__["LoadingManager"](() => {
             setInterval(() => {
             }, 2000);
             this.drawTexture();
             this.animate();
         });
         developers.forEach((element) => {
-            element.image = new __WEBPACK_IMPORTED_MODULE_6_three__["ImageLoader"](this.loadingManager).load(element.srcAvatar);
+            element.image = new __WEBPACK_IMPORTED_MODULE_8_three__["ImageLoader"](this.loadingManager).load(element.srcAvatar);
         });
     }
     setupMeshes() {
         let cfgBall = this.cfg.ball;
-        let geometry = new __WEBPACK_IMPORTED_MODULE_6_three__["CircleGeometry"](this.cfg.container.radius, 32, 0, 2 * Math.PI);
-        this.texture = new __WEBPACK_IMPORTED_MODULE_6_three__["CanvasTexture"](this.fbo, __WEBPACK_IMPORTED_MODULE_6_three__["UVMapping"], __WEBPACK_IMPORTED_MODULE_6_three__["RepeatWrapping"], __WEBPACK_IMPORTED_MODULE_6_three__["RepeatWrapping"]);
-        this.texture.minFilter = __WEBPACK_IMPORTED_MODULE_6_three__["LinearFilter"];
-        this.texture.magFilter = __WEBPACK_IMPORTED_MODULE_6_three__["LinearFilter"];
-        this.texture.format = __WEBPACK_IMPORTED_MODULE_6_three__["RGBFormat"];
-        let material = new __WEBPACK_IMPORTED_MODULE_6_three__["MeshBasicMaterial"]({
-            color: 0xffffff, map: this.texture, side: __WEBPACK_IMPORTED_MODULE_6_three__["DoubleSide"]
+        let geometry = new __WEBPACK_IMPORTED_MODULE_8_three__["CircleGeometry"](this.cfg.container.radius, 32, 0, 2 * Math.PI);
+        this.texture = new __WEBPACK_IMPORTED_MODULE_8_three__["CanvasTexture"](this.fbo, __WEBPACK_IMPORTED_MODULE_8_three__["UVMapping"], __WEBPACK_IMPORTED_MODULE_8_three__["RepeatWrapping"], __WEBPACK_IMPORTED_MODULE_8_three__["RepeatWrapping"]);
+        this.texture.minFilter = __WEBPACK_IMPORTED_MODULE_8_three__["LinearFilter"];
+        this.texture.magFilter = __WEBPACK_IMPORTED_MODULE_8_three__["LinearFilter"];
+        this.texture.format = __WEBPACK_IMPORTED_MODULE_8_three__["RGBFormat"];
+        let material = new __WEBPACK_IMPORTED_MODULE_8_three__["MeshBasicMaterial"]({
+            color: 0xffffff, map: this.texture, side: __WEBPACK_IMPORTED_MODULE_8_three__["DoubleSide"]
         });
-        this.circle = new __WEBPACK_IMPORTED_MODULE_6_three__["Mesh"](geometry, material);
+        this.circle = new __WEBPACK_IMPORTED_MODULE_8_three__["Mesh"](geometry, material);
         this.circle.position.set(0, 0, this.cfg.container.height / 2);
         this.scene.add(this.circle);
-        let sGeometry = new __WEBPACK_IMPORTED_MODULE_6_three__["SphereGeometry"](cfgBall.radius, 32, 32);
-        let sMaterial = new __WEBPACK_IMPORTED_MODULE_6_three__["MeshStandardMaterial"]({
+        let sGeometry = new __WEBPACK_IMPORTED_MODULE_8_three__["BoxGeometry"](cfgBall.radius, cfgBall.radius, cfgBall.radius);
+        let sMaterial = new __WEBPACK_IMPORTED_MODULE_8_three__["MeshStandardMaterial"]({
             map: null,
             color: 0xffff00,
             metalness: 1.0
         });
-        this.ball = new __WEBPACK_IMPORTED_MODULE_6_three__["Mesh"](sGeometry, sMaterial);
+        this.ball = new __WEBPACK_IMPORTED_MODULE_8_three__["Mesh"](sGeometry, sMaterial);
         this.scene.add(this.ball);
-        let textureLoader = new __WEBPACK_IMPORTED_MODULE_6_three__["TextureLoader"]();
-        textureLoader.load("/dist/img/roughness_map.jpg", function (map) {
-            map.wrapS = __WEBPACK_IMPORTED_MODULE_6_three__["RepeatWrapping"];
-            map.wrapT = __WEBPACK_IMPORTED_MODULE_6_three__["RepeatWrapping"];
-            map.anisotropy = 4;
-            map.repeat.set(9, 2);
+        let textureLoader = new __WEBPACK_IMPORTED_MODULE_8_three__["TextureLoader"]();
+        textureLoader.load("/dist/textures/roughness_map.jpg", function (map) {
             sMaterial.roughnessMap = map;
             sMaterial.bumpMap = map;
             sMaterial.needsUpdate = true;
@@ -2139,14 +2843,27 @@ class Application {
                 prefix + 'pz' + postfix, prefix + 'nz' + postfix
             ];
         };
-        let hdrUrls = genCubeUrls("./textures/cube/pisaHDR/", ".hdr");
-        new __WEBPACK_IMPORTED_MODULE_2__HDRCubeTextureLoader__["a" /* default */]().load(__WEBPACK_IMPORTED_MODULE_6_three__["UnsignedByteType"], hdrUrls, (hdrCubeMap) => {
+        let hdrUrls = genCubeUrls("./dist/textures/pisaHDR/", ".hdr");
+        let hdrCubeLoader = new __WEBPACK_IMPORTED_MODULE_2__HDRCubeTextureLoader__["a" /* default */]().load(__WEBPACK_IMPORTED_MODULE_8_three__["UnsignedByteType"], hdrUrls, (hdrCubeMap) => {
             let pmremGenerator = new __WEBPACK_IMPORTED_MODULE_3__PMREMGenerator__["a" /* default */](hdrCubeMap);
             pmremGenerator.update(this.renderer);
             let pmremCubeUVPacker = new __WEBPACK_IMPORTED_MODULE_4__PMREMCubeUVPacker__["a" /* default */](pmremGenerator.cubeLods);
             pmremCubeUVPacker.update(this.renderer);
             this.hdrCubeRenderTarget = pmremCubeUVPacker.CubeUVRenderTarget;
         });
+        this.scene.add(new __WEBPACK_IMPORTED_MODULE_8_three__["AmbientLight"](0x222222));
+        let spotLight = new __WEBPACK_IMPORTED_MODULE_8_three__["SpotLight"](0xffffff);
+        spotLight.position.set(50, 100, 50);
+        spotLight.angle = Math.PI / 7;
+        spotLight.penumbra = 0.8;
+        spotLight.castShadow = true;
+        this.scene.add(spotLight);
+        this.renderScene = new __WEBPACK_IMPORTED_MODULE_5_three_effectcomposer_es6__["RenderPass"](this.scene, this.camera);
+        let bloomPass = new __WEBPACK_IMPORTED_MODULE_6__UnrealBloomPass__["a" /* default */](new __WEBPACK_IMPORTED_MODULE_8_three__["Vector2"](window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);
+        this.composer = new __WEBPACK_IMPORTED_MODULE_5_three_effectcomposer_es6___default.a(this.renderer);
+        this.composer.addPass(bloomPass);
+        this.renderer.gammaInput = true;
+        this.renderer.gammaOutput = true;
     }
     setupPhysicalWorld() {
         let cfgContainer = this.cfg.container;
@@ -2216,7 +2933,7 @@ class Application {
             this.cannonWorld.addBody(wallBody);
             this.bars.push({ wall: wallBody, cylinder: cylinderBody });
         }
-        this.cannonDebugRenderer = new __WEBPACK_IMPORTED_MODULE_7__CannonDebugRenderer__["a" /* CannonDebugRenderer */](this.scene, this.cannonWorld);
+        this.cannonDebugRenderer = new __WEBPACK_IMPORTED_MODULE_9__CannonDebugRenderer__["a" /* CannonDebugRenderer */](this.scene, this.cannonWorld);
     }
     moveBall(x, y, z, vel = new CANNON.Vec3(0, 0, 0)) {
         this.sphereBody.position.set(x, y, z);
@@ -2225,11 +2942,11 @@ class Application {
         this.sphereBody.wakeUp();
     }
     createMesh(geom) {
-        let meshMaterial = new __WEBPACK_IMPORTED_MODULE_6_three__["MeshNormalMaterial"]();
-        meshMaterial.side = __WEBPACK_IMPORTED_MODULE_6_three__["DoubleSide"];
-        let wireFrameMat = new __WEBPACK_IMPORTED_MODULE_6_three__["MeshBasicMaterial"]();
+        let meshMaterial = new __WEBPACK_IMPORTED_MODULE_8_three__["MeshNormalMaterial"]();
+        meshMaterial.side = __WEBPACK_IMPORTED_MODULE_8_three__["DoubleSide"];
+        let wireFrameMat = new __WEBPACK_IMPORTED_MODULE_8_three__["MeshBasicMaterial"]();
         wireFrameMat.wireframe = true;
-        let mesh = __WEBPACK_IMPORTED_MODULE_6_three__["SceneUtils"].createMultiMaterialObject(geom, [wireFrameMat]);
+        let mesh = __WEBPACK_IMPORTED_MODULE_8_three__["SceneUtils"].createMultiMaterialObject(geom, [wireFrameMat]);
         return mesh;
     }
     syncMeshWithBody(mesh, body) {
@@ -2248,7 +2965,7 @@ class Application {
         let centerX = xMax / 2;
         let centerY = yMax / 2;
         let border = 2;
-        let selectedDevelopers = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_5_lodash__["filter"])(developers, (el) => el.selected);
+        let selectedDevelopers = __webpack_require__.i(__WEBPACK_IMPORTED_MODULE_7_lodash__["filter"])(developers, (el) => el.selected);
         let angle = 2 * Math.PI / selectedDevelopers.length;
         let colors = ['white', 'white'];
         let randomOffset = Math.floor(Math.random() * 5);
@@ -2367,4 +3084,4 @@ document.addEventListener("DOMContentLoaded", function () {
 
 
 /***/ })
-],[15]);
+],[24]);

@@ -7,6 +7,8 @@ import * as dat from 'dat-gui';
 import HDRCubeTextureLoader from './HDRCubeTextureLoader';
 import PMREMGenerator from './PMREMGenerator';
 import PMREMCubeUVPacker from './PMREMCubeUVPacker';
+import EffectComposer, { RenderPass, ShaderPass, CopyShader } from 'three-effectcomposer-es6';
+import UnrealBloomPass from './UnrealBloomPass';
 
 declare var require;
 declare class Stats {
@@ -73,10 +75,11 @@ class Application {
   stats: Stats;
   gui: dat.GUI;
   //global stuff
-  renderer: THREE.Renderer;
+  renderer: THREE.WebGLRenderer;
+  composer: EffectComposer;
+  renderScene: RenderPass;
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
-  lights: THREE.Light[];
 
   //Cfg
   cfg: any;
@@ -123,7 +126,6 @@ class Application {
   }
 
   free(){
-    this.lights = [];
     this.scene = null;
     this.renderer = null;
     this.camera = null;
@@ -167,20 +169,7 @@ class Application {
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
 
-    let pointLight = new THREE.PointLight(0xffffff);
-    pointLight.position.set(0,20,0);
-    this.scene.add(pointLight);
-
-    let ambientLight = new THREE.AmbientLight(0x444444);
-    this.scene.add(ambientLight);
-
-    let directionalLight = new THREE.DirectionalLight( 0xffeedd );
-    directionalLight.position.set( 0, 0, 1 ).normalize();
-    this.scene.add(directionalLight);
-
-    this.lights.push(pointLight);
-    this.lights.push(ambientLight);
-    this.lights.push(directionalLight);
+    this.renderer.shadowMap.enabled = true;
 
     this.renderer.domElement.addEventListener( 'mousemove', this.mouseMove, false );
     document.body.appendChild( this.renderer.domElement );
@@ -239,7 +228,8 @@ class Application {
     this.scene.add( this.circle );
 
     //Ball
-    let sGeometry = new THREE.SphereGeometry( cfgBall.radius, 32, 32 );
+    // let sGeometry = new THREE.SphereGeometry( cfgBall.radius, 32, 32 );
+    let sGeometry = new THREE.BoxGeometry(cfgBall.radius, cfgBall.radius, cfgBall.radius) ;
     let sMaterial = new THREE.MeshStandardMaterial({
       map: null,
       color: 0xffff00,
@@ -249,11 +239,11 @@ class Application {
     this.scene.add( this.ball );
 
     let textureLoader = new THREE.TextureLoader();
-    textureLoader.load( "/dist/img/roughness_map.jpg", function( map ) {
-      map.wrapS = THREE.RepeatWrapping;
-      map.wrapT = THREE.RepeatWrapping;
-      map.anisotropy = 4;
-      map.repeat.set( 9, 2 );
+    textureLoader.load( "/dist/textures/roughness_map.jpg", function( map ) {
+      // map.wrapS = THREE.RepeatWrapping;
+      // map.wrapT = THREE.RepeatWrapping;
+      // map.anisotropy = 4;
+      // map.repeat.set( 9, 2 );
       sMaterial.roughnessMap = map;
       sMaterial.bumpMap = map;
       sMaterial.needsUpdate = true;
@@ -267,8 +257,8 @@ class Application {
       ];
     };
 
-    let hdrUrls = genCubeUrls( "./textures/cube/pisaHDR/", ".hdr" );
-    new HDRCubeTextureLoader().load( THREE.UnsignedByteType, hdrUrls, ( hdrCubeMap ) => {
+    let hdrUrls = genCubeUrls( "./dist/textures/pisaHDR/", ".hdr" );
+    let hdrCubeLoader = new HDRCubeTextureLoader().load( THREE.UnsignedByteType, hdrUrls, ( hdrCubeMap ) => {
 
       let pmremGenerator = new PMREMGenerator( hdrCubeMap );
       pmremGenerator.update( this.renderer );
@@ -281,6 +271,22 @@ class Application {
     } );
     // Lights
 
+    this.scene.add( new THREE.AmbientLight( 0x222222 ) );
+    let spotLight = new THREE.SpotLight( 0xffffff );
+    spotLight.position.set( 50, 100, 50 );
+    spotLight.angle = Math.PI / 7;
+    spotLight.penumbra = 0.8;
+    spotLight.castShadow = true;
+    this.scene.add( spotLight );
+
+    this.renderScene = new RenderPass(this.scene, this.camera);
+
+    let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);//1.0, 9, 0.5, 512);
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.addPass(bloomPass);
+
+    this.renderer.gammaInput = true;
+    this.renderer.gammaOutput = true;
   }
 
   setupPhysicalWorld() {
