@@ -1601,13 +1601,13 @@ class PMREMCubeUVPacker {
                 "testColor": { value: new __WEBPACK_IMPORTED_MODULE_0_three__["Vector3"](1, 1, 1) }
             },
             vertexShader: "precision highp float;\
-        letying vec2 vUv;\
+        varying vec2 vUv;\
         void main() {\
           vUv = uv;\
           gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\
         }",
             fragmentShader: "precision highp float;\
-        letying vec2 vUv;\
+        varying vec2 vUv;\
         uniform samplerCube envMap;\
         uniform float mapSize;\
         uniform vec3 testColor;\
@@ -1743,13 +1743,13 @@ class PMREMGenerator {
                 "queryScale": { value: new __WEBPACK_IMPORTED_MODULE_0_three__["Vector3"](1, 1, 1) },
                 "testColor": { value: new __WEBPACK_IMPORTED_MODULE_0_three__["Vector3"](1, 1, 1) },
             },
-            vertexShader: "letying vec2 vUv;\n\
+            vertexShader: "varying vec2 vUv;\n\
         void main() {\n\
           vUv = uv;\n\
           gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n\
         }",
             fragmentShader: "#include <common>\n\
-        letying vec2 vUv;\n\
+        varying vec2 vUv;\n\
         uniform int faceIndex;\n\
         uniform float roughness;\n\
         uniform samplerCube envMap;\n\
@@ -2022,13 +2022,13 @@ class UnrealBloomPass extends __WEBPACK_IMPORTED_MODULE_1__Pass__["a" /* default
                 "texSize": { value: new __WEBPACK_IMPORTED_MODULE_0_three__["Vector2"](0.5, 0.5) },
                 "direction": { value: new __WEBPACK_IMPORTED_MODULE_0_three__["Vector2"](0.5, 0.5) }
             },
-            vertexShader: "letying vec2 vUv;\n\
+            vertexShader: "varying vec2 vUv;\n\
         void main() {\n\
           vUv = uv;\n\
           gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n\
         }",
             fragmentShader: "#include <common>\
-        letying vec2 vUv;\n\
+        varying vec2 vUv;\n\
         uniform sampler2D colorTexture;\n\
         uniform vec2 texSize;\
         uniform vec2 direction;\
@@ -2071,12 +2071,12 @@ class UnrealBloomPass extends __WEBPACK_IMPORTED_MODULE_1__Pass__["a" /* default
                 "bloomTintColors": { value: null },
                 "bloomRadius": { value: 0.0 }
             },
-            vertexShader: "letying vec2 vUv;\n\
+            vertexShader: "varying vec2 vUv;\n\
         void main() {\n\
           vUv = uv;\n\
           gl_Position = projectionMatrix * modelViewMatrix * vec4( position, 1.0 );\n\
         }",
-            fragmentShader: "letying vec2 vUv;\
+            fragmentShader: "varying vec2 vUv;\
         uniform sampler2D blurTexture1;\
         uniform sampler2D blurTexture2;\
         uniform sampler2D blurTexture3;\
