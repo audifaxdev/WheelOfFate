@@ -57,7 +57,7 @@ let defaultCfg: any = {
     height: 10,
     nbBars: 30,
     barSize: {
-      x: .5, y: 20, z: 10
+      x: .5, y: 1, z: 10
     },
     markBarHeight: .95,
     currentRotation: 0
@@ -398,7 +398,7 @@ class Application {
       cylinderBody.allowSleep = true;
       cylinderBody.addShape(boxShape);
       cylinderBody.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), angularPos);
-      cylinderBody.position.set((cfgContainer.barSize.y+barRadius)*Math.cos(angularPos), (cfgContainer.barSize.y+barRadius)*Math.sin(angularPos), 0);
+      cylinderBody.position.set((barRadius)*Math.cos(angularPos), (barRadius)*Math.sin(angularPos), 0);
 
       let bumpBoxGeometry = new THREE.BoxGeometry(2*cfgContainer.barSize.y, 2*cfgContainer.barSize.x, 2*cfgContainer.barSize.z);
       let bumpBoxMesh = new THREE.Mesh(bumpBoxGeometry, this.sMaterial);
@@ -472,8 +472,8 @@ class Application {
       circularForce.normalize();
       circularForce.scale(tanSpeed);
 
-      let newX2 = (cfgContainer.barSize.y+radius)*Math.cos(angularPos + cfgContainer.currentRotation);
-      let newY2 = (cfgContainer.barSize.y+radius)*Math.sin(angularPos + cfgContainer.currentRotation);
+      let newX2 = (radius)*Math.cos(angularPos + cfgContainer.currentRotation);
+      let newY2 = (radius)*Math.sin(angularPos + cfgContainer.currentRotation);
 
       cylinder.velocity = circularForce;
       cylinder.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), i*angleFraction + cfgContainer.currentRotation);
