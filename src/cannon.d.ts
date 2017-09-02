@@ -13,6 +13,7 @@ declare module CANNON {
 
   }
 
+
   export class AABB {
 
     lowerBound: Vec3;
@@ -295,6 +296,7 @@ declare module CANNON {
     contactEquationRelaxation: number;
     frictionEquationStiffness: number;
     frictionEquationRelaxation: number;
+    contactEquationRegularizationTime: any;
 
     constructor(m1: Material, m2: Material, options?: IContactMaterialOptions);
 

@@ -11,6 +11,7 @@ import EffectComposer, { RenderPass, ShaderPass, CopyShader } from 'three-effect
 import UnrealBloomPass from './UnrealBloomPass';
 
 declare var require;
+
 declare class Stats {
   REVISION: number;
   domElement: HTMLDivElement;
@@ -36,11 +37,11 @@ interface Developer {
 }
 
 let developers: Developer[] = [
-  {name: 'Davo', srcAvatar: './dist/img/matthew.png', image: null, selected: true},
-  {name: 'Stretcho', srcAvatar: './dist/img/john.png', image: null, selected: true},
-  {name: 'Davo', srcAvatar: './dist/img/matthew.png', image: null, selected: true},
-  {name: 'Stretcho', srcAvatar: './dist/img/john.png', image: null, selected: true},
-  {name: 'Davo', srcAvatar: './dist/img/matthew.png', image: null, selected: true},
+  {name: 'Alpha', srcAvatar: './dist/img/alpha.png', image: null, selected: true},
+  {name: 'Beta', srcAvatar: './dist/img/beta.png', image: null, selected: true},
+  {name: 'Gamma', srcAvatar: './dist/img/gamma.png', image: null, selected: true},
+  {name: 'Delta', srcAvatar: './dist/img/delta.gif', image: null, selected: true},
+  {name: 'Zeta', srcAvatar: './dist/img/zeta.png', image: null, selected: true},
 ];
 
 let defaultCfg: any = {
@@ -57,7 +58,7 @@ let defaultCfg: any = {
     height: 10,
     nbBars: 30,
     barSize: {
-      x: .5, y: 1, z: 10
+      x: .5, y: 1, z: 4
     },
     markBarHeight: .95,
     currentRotation: 0
@@ -88,10 +89,9 @@ class Application {
 
   //Mesh
   circle: THREE.Mesh;
-  sMaterial: THREE.MeshStandardMaterial;
-
   ball: THREE.Mesh;
   wheel: THREE.Object3D;
+  text: THREE.Mesh;
   sphereBody: CANNON.Body;
 
   //Interactivity
@@ -110,10 +110,14 @@ class Application {
   avatar: HTMLImageElement;
   uvTexture: HTMLImageElement;
 
+  hdrMaterials: THREE.MeshStandardMaterial[];
+
   //physics
   lastTick: number;
   cannonWorld: CANNON.World;
   bars: any[];
+
+  currentWinner: Developer;
 
   //tween
   wheelTween: TweenLite;
@@ -133,21 +137,20 @@ class Application {
   }
 
   refresh () {
-    this.drawTexture();
+    this.updateTexture();
   }
 
   init() {
-
     this.cfg = defaultCfg;
+    this.hdrMaterials = [];
+    this.currentWinner = null;
 
     this.stats = new Stats();
-    console.log('this.stats', this.stats);
     this.stats.showPanel( 0 ); // 0: fps, 1: ms, 2: mb, 3+: custom
     if (this.stats.domElement) {
       this.stats.domElement.className = 'stats';
       document.body.appendChild( this.stats.domElement );
     }
-    let cfgContainer = this.cfg.container;
 
     this.mouse = new THREE.Vector2(0,0);
     this.mouseUVCoord = new THREE.Vector2(0,0);
@@ -176,7 +179,7 @@ class Application {
     this.renderer.domElement.addEventListener( 'mousemove', this.mouseMove, false );
     document.body.appendChild( this.renderer.domElement );
 
-    this.camera.position.set(100, 0, 0);
+    this.camera.position.set(0, 5, -50);
     this.camera.lookAt(new THREE.Vector3(0,0,0));
 
     this.setupMeshes();
@@ -188,24 +191,17 @@ class Application {
     developers.forEach((developer) => {
       this.gui.add(developer, 'selected').name(developer.name).onChange(this.refresh.bind(this));
     });
-
+    this.gui.add(this.cfg.container, 'currentRotation', -4*Math.PI, 4*Math.PI).onChange(this.tweenWheel);
     this.gui.add({spinWheel: this.spinWheel}, 'spinWheel');
 
-    // this.moveBall(new THREE.Vector3(-cfgContainer.radius + cfgBall.radius/2, 0, 0));
-    this.cannonDebugRenderer = new CannonDebugRenderer(this.scene, this.cannonWorld);
   }
 
   loadAssets() {
     this.loadingManager = new THREE.LoadingManager(() => {
-      //Finished loading assets
-
-      setInterval(() => {
-        // console.log('Sphere Speed', this.sphereBody.velocity.length());
-      }, 2000);
-
-      this.drawTexture();
+      this.updateTexture();
       this.render();
     });
+
     developers.forEach((element: Developer) => {
       element.image = new THREE.ImageLoader(this.loadingManager).load(element.srcAvatar);
     });
@@ -227,10 +223,11 @@ class Application {
     // let material = new THREE.MeshBasicMaterial({ map: texture });
 
     let cylMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffffff, side: THREE.DoubleSide, metalness: 0
+      color: 0xffffff, side: THREE.DoubleSide, metalness: .9
     });
+    cylMaterial.roughness = 1.0;
 
-    let material = new THREE.MeshBasicMaterial({
+    let diskmaterial = new THREE.MeshBasicMaterial({
       color: 0xffffff, map: this.texture, side: THREE.DoubleSide
     });
 
@@ -242,33 +239,39 @@ class Application {
     this.wheel.add(cylinder);
     this.scene.add(this.wheel);
 
-    this.circle = new THREE.Mesh( geometry, material );
+    this.circle = new THREE.Mesh( geometry, diskmaterial );
     this.circle.position.set(0, 0, this.cfg.container.height/2);
-    this.scene.add( this.circle );
+    this.wheel.add(this.circle);
+    // this.scene.add( this.circle );
 
     //Ball
     let sGeometry = new THREE.SphereGeometry( cfgBall.radius, 32, 32 );
     // let sGeometry = new THREE.BoxGeometry(cfgBall.radius, cfgBall.radius, cfgBall.radius);
     // let sGeometry = new THREE.TorusKnotGeometry( 8, 4, 75, 10 );
-    this.sMaterial = new THREE.MeshStandardMaterial({
+    let sMaterial = new THREE.MeshStandardMaterial({
       map: null,
       color: 0xffffff,
       metalness: 1.0
     });
-    this.sMaterial.roughness = 1.0;
-    this.sMaterial.bumpScale = -0.05;
-    this.ball = new THREE.Mesh( sGeometry, this.sMaterial );
+    sMaterial.roughness = 1.0;
+    sMaterial.bumpScale = -0.05;
+
+    this.hdrMaterials.push(sMaterial, cylMaterial);
+
+    this.ball = new THREE.Mesh( sGeometry, sMaterial );
     this.scene.add( this.ball );
 
     let textureLoader = new THREE.TextureLoader();
     textureLoader.load( "/dist/img/BasketBallColor.jpg", ( map ) => {
       // map.wrapS = THREE.RepeatWrapping;
       // map.wrapT = THREE.RepeatWrapping;
-      map.anisotropy = 4;
       // map.repeat.set( 9, 2 );
-      this.sMaterial.roughnessMap = map;
-      this.sMaterial.bumpMap = map;
-      this.sMaterial.needsUpdate = true;
+      map.anisotropy = 4;
+      for (let i=0;i<this.hdrMaterials.length; i++) {
+        this.hdrMaterials[i].roughnessMap = map;
+        this.hdrMaterials[i].bumpMap = map;
+        this.hdrMaterials[i].needsUpdate = true;
+      }
     } );
 
     let genCubeUrls = function( prefix, postfix ) {
@@ -301,17 +304,13 @@ class Application {
     this.scene.add( spotLight );
 
     this.renderPass = new RenderPass(this.scene, this.camera);
-
     let copyShader = new ShaderPass(CopyShader);
     copyShader.renderToScreen = true;
-
-    let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, 0.4, 0.85);//1.0, 9, 0.5, 512);
+    let bloomPass = new UnrealBloomPass(new THREE.Vector2(window.innerWidth, window.innerHeight), 1.5, .4, 0.85);
     this.composer = new EffectComposer(this.renderer);
-
     this.composer.addPass(this.renderPass);
     this.composer.addPass(bloomPass);
     this.composer.addPass(copyShader);
-
     this.renderer.gammaInput = true;
     this.renderer.gammaOutput = true;
   }
@@ -345,6 +344,7 @@ class Application {
       physicsMaterial,
       {friction: 0.4, restitution: 0.9}
     );
+
     this.cannonWorld.addContactMaterial(boxContactMaterial);
     this.cannonWorld.addContactMaterial(bumpy_ground);
 
@@ -389,7 +389,7 @@ class Application {
     let angleFraction = 2*Math.PI / this.cfg.container.nbBars;
 
     for(let i=0; i< this.cfg.container.nbBars; i++) {
-      let barRadius = i%2 ? cfgContainer.radius*.98:cfgContainer.radius*.90;
+      let barRadius = i%2 ? cfgContainer.radius*1.02:cfgContainer.radius;
       let radius = cfgContainer.radius;
       let angularPos = i * angleFraction;
 
@@ -401,7 +401,7 @@ class Application {
       cylinderBody.position.set((barRadius)*Math.cos(angularPos), (barRadius)*Math.sin(angularPos), 0);
 
       let bumpBoxGeometry = new THREE.BoxGeometry(2*cfgContainer.barSize.y, 2*cfgContainer.barSize.x, 2*cfgContainer.barSize.z);
-      let bumpBoxMesh = new THREE.Mesh(bumpBoxGeometry, this.sMaterial);
+      let bumpBoxMesh = new THREE.Mesh(bumpBoxGeometry, this.hdrMaterials[0]);
 
       this.syncMeshWithBody(bumpBoxMesh, cylinderBody);
       // bumpBoxMesh.position.set(Math.cos(angularPos),Math.sin(angularPos),0);
@@ -421,12 +421,11 @@ class Application {
       this.cannonWorld.addBody(wallBody);
       this.bars.push({wall: wallBody, cylinder: cylinderBody, mesh: bumpBoxMesh});
     }
+    this.cannonDebugRenderer = new CannonDebugRenderer(this.scene, this.cannonWorld);
   }
 
   spinWheel = () => {
-
     let cfgContainer = this.cfg.container;
-
     if (this.wheelTween) {
       this.wheelTween.restart();
     } else {
@@ -446,19 +445,19 @@ class Application {
     let angleFraction = 2*Math.PI / cfgContainer.nbBars;
     let lastAngle = 0;
 
-    this.circle.rotation.set(0, 0, cfgContainer.currentRotation);
+    // this.circle.rotation.set(0, 0, cfgContainer.currentRotation);
+    this.wheel.quaternion.setFromAxisAngle(new THREE.Vector3(0,0,1), -cfgContainer.currentRotation);
     this.bars.forEach((bar: any, i) => {
 
       let wall = bar.wall;
       let cylinder = bar.cylinder;
-      let mesh = bar.mesh;
 
       let angularPos = i * angleFraction;
-      let radius = i%2 ? cfgContainer.radius*.98:cfgContainer.radius*.90;
+      let radius = i%2 ? cfgContainer.radius*1.02:cfgContainer.radius;
 
       // let radius = cfgContainer.radius;
-      let newX = (cfgContainer.radius)*Math.cos(angularPos + cfgContainer.currentRotation);
-      let newY = (cfgContainer.radius)*Math.sin(angularPos + cfgContainer.currentRotation);
+      let newX = (cfgContainer.radius)*Math.cos(angularPos + -cfgContainer.currentRotation);
+      let newY = (cfgContainer.radius)*Math.sin(angularPos + -cfgContainer.currentRotation);
 
       let now = new Date().getTime();
       let dt = (lastTweenTick - now);
@@ -472,21 +471,19 @@ class Application {
       circularForce.normalize();
       circularForce.scale(tanSpeed);
 
-      let newX2 = (radius)*Math.cos(angularPos + cfgContainer.currentRotation);
-      let newY2 = (radius)*Math.sin(angularPos + cfgContainer.currentRotation);
+      let newX2 = (radius)*Math.cos(angularPos + -cfgContainer.currentRotation);
+      let newY2 = (radius)*Math.sin(angularPos + -cfgContainer.currentRotation);
 
       cylinder.velocity = circularForce;
-      cylinder.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), i*angleFraction + cfgContainer.currentRotation);
+      cylinder.quaternion.setFromAxisAngle(new CANNON.Vec3(0, 0, 1), i*angleFraction + -cfgContainer.currentRotation);
       cylinder.position.set(newX2, newY2, 0);
 
       wall.position.set(newX, newY, 0);
       wall.quaternion.setFromAxisAngle(new CANNON.Vec3(1, 0, 0), -Math.PI/2);
       let rotation = new CANNON.Quaternion();
-      rotation.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), +3*Math.PI/2 - (angularPos + cfgContainer.currentRotation));
+      rotation.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), +3*Math.PI/2 - (angularPos + -cfgContainer.currentRotation));
       wall.quaternion.copy(wall.quaternion.mult(rotation));
 
-      // this.syncMeshWithBody(mesh, wall);
-      this.wheel.quaternion.setFromAxisAngle(new THREE.Vector3(0,0,1), cfgContainer.currentRotation);
 
       lastTweenTick = now;
       lastAngle = cfgContainer.currentRotation;
@@ -494,39 +491,19 @@ class Application {
   };
 
   moveBall(x: number, y: number , z: number, vel: CANNON.Vec3 = new CANNON.Vec3(999, 999, 999)) {
+
     this.sphereBody.position.set(x, y, z);
     this.sphereBody.velocity = vel;
     this.syncMeshWithBody(this.ball, this.sphereBody);
     this.sphereBody.wakeUp();
   }
 
-  createMesh(geom) {
-    // assign two materials
-    let meshMaterial = new THREE.MeshNormalMaterial();
-    meshMaterial.side = THREE.DoubleSide;
-    let wireFrameMat = new THREE.MeshBasicMaterial();
-    wireFrameMat.wireframe = true;
-    // create a multimaterial
-    let mesh = THREE.SceneUtils.createMultiMaterialObject(geom, [wireFrameMat]);
-    return mesh;
-  }
-
   syncMeshWithBody(mesh, body) {
     mesh.position.copy(body.position);
     mesh.quaternion.copy(body.quaternion);
   }
-  //
-  // syncMeshWithBody(mesh: THREE.Object3D, body: CANNON.Body) {
-  //   mesh.position.x = body.position.x;
-  //   mesh.position.y = body.position.y;
-  //   mesh.position.z = body.position.z;
-  //   mesh.quaternion.x = body.quaternion.x;
-  //   mesh.quaternion.y = body.quaternion.y;
-  //   mesh.quaternion.z = body.quaternion.z;
-  //   mesh.quaternion.w = body.quaternion.w;
-  // }
 
-  drawTexture() {
+  updateTexture() {
     let ctx: CanvasRenderingContext2D = this.fbo.getContext('2d');
 
     let xMax = Math.floor(this.fbo.width);
@@ -536,36 +513,19 @@ class Application {
 
     let border = 2;
     let selectedDevelopers: Developer[] = filter(developers, (el: Developer) => el.selected);
-
     let angle = 2*Math.PI/selectedDevelopers.length;
 
-    let colors = ['white', 'white'];
-    let randomOffset = Math.floor(Math.random() * 5);
-
     ctx.clearRect(0, 0, xMax, yMax);
-
     ctx.lineWidth = border;
     ctx.strokeStyle = '#003300';
 
     let i: number = 0;
 
-    //[a,b] circle's center coord
-    //[x,y] point to test
-    //Area of the disk (x-a)^2 - (y - b)^2 <= r^2
-
-    let insideCircle = (this.ball.position.x * this.ball.position.x) - (this.ball.position.y * this.ball.position.y) <= (this.cfg.container.radius*this.cfg.container.radius);
-
-    let extra = this.cfg.container.currentRotation % (2*Math.PI);
-    let mousePolarCoordinate: number = -Math.atan2(this.ball.position.y, this.ball.position.x) + extra;
-
     if (selectedDevelopers.length > 1) {
       selectedDevelopers.forEach((dev: Developer) => {
-        // let fillStyle = colors[(randomOffset + i) % (colors.length)];
         let startAngle = i*angle;
         let endAngle = (i+1)*angle;
-        let mouseInsideSector = (startAngle <= mousePolarCoordinate && mousePolarCoordinate <= endAngle);
-        let fillStyle = (insideCircle && mouseInsideSector) ? 'red':'blue';
-
+        let fillStyle = (this.currentWinner === dev) ? 'red':'blue';
         ctx.save();
         ctx.fillStyle = fillStyle;
         ctx.beginPath();
@@ -581,73 +541,79 @@ class Application {
         ctx.rotate(startAngle + angle/2 + Math.PI/2);
         ctx.drawImage(dev.image, -35, -centerY + 15, 70, 70);
         ctx.restore();
-        fillTextCircle(ctx, dev.name, centerX, centerY, -30 -border + centerX, i*angle - angle/2, angle);
+        // fillTextCircle(ctx, dev.name, centerX, centerY, -30 -border + centerX, i*angle - angle/2, angle);
         i++;
       });
     }
-
     this.texture.needsUpdate = true;
   }
 
-  drawTimeTexture() {
-    let ctx: CanvasRenderingContext2D = this.fbo.getContext('2d');
-    let xMax = Math.floor(this.fbo.width);
-    let yMax = Math.floor(this.fbo.height);
-    let centerX = xMax/2;
-    let centerY = yMax/2;
+  computeCurrentWinner() {
+    let selectedDevelopers: Developer[] = filter(developers, (el: Developer) => el.selected);
+    let angle = 2*Math.PI/selectedDevelopers.length;
+    let i: number = 0;
 
-    let border = 5;
+    //[a,b] circle's center coord
+    //[x,y] point to test
+    //Area of the disk (x-a)^2 - (y - b)^2 <= r^2
+    let insideCircle = (this.ball.position.x * this.ball.position.x) - (this.ball.position.y * this.ball.position.y)
+      <= (this.cfg.container.radius*this.cfg.container.radius);
 
-    ctx.clearRect(0, 0, xMax, yMax);
+    if (!insideCircle) {
+      console.warn('BALL IS NOT INSIDE CYLINDER?!?!?!?!');
+    }
 
-    ctx.beginPath();
-    ctx.arc(centerX, centerY, -border + this.fbo.width/2, 0, 2*Math.PI, false);
-    ctx.fillStyle = 'blue';
-    ctx.fill();
-    ctx.lineWidth = border;
-    ctx.strokeStyle = '#003300';
-    ctx.stroke();
+    let raycaster = new THREE.Raycaster(this.ball.position, new THREE.Vector3(0,0,1), 0, 100);
+    let intersects = raycaster.intersectObject(this.wheel, true);
+    let intersectionUVCoor = new THREE.Vector2();
 
-    ctx.font = '18pt Arial';
-    ctx.fillStyle = 'black';
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(new Date().toUTCString(), this.fbo.width / 2, this.fbo.height / 2, this.fbo.width - 2*border);
+    if (intersects.length) {
+      intersects.forEach((intersection: any) => {
+        // console.log('intersection ', intersection);
+        if (intersection.object === this.circle && intersection.uv) {
+          let uv = intersection.uv;
+          intersection.object.material.map.transformUv( uv );
+          // console.log('uv', uv);
+          intersectionUVCoor.set(uv.x, uv.y);
+          return;
+        }
+      });
+    } else {
+      console.warn('BALL POS NOT OVER DISK')
+    }
 
-    this.texture.needsUpdate = true;
+    intersectionUVCoor.rotateAround(new THREE.Vector2(), -Math.PI/2);
+
+    console.log('uv', intersectionUVCoor);
+
+    let ballPolarCoord = -Math.atan2(intersectionUVCoor.y, intersectionUVCoor.x);
+
+    if (selectedDevelopers.length > 1) {
+      let found = false;
+      selectedDevelopers.forEach((dev: Developer) => {
+        let startAngle = (i*angle);
+        let endAngle = ((i+1)*angle);
+        if ((startAngle <= ballPolarCoord && ballPolarCoord <= endAngle)) {
+          this.setCurrentWinner(dev);
+          found = true;
+        }
+        i++;
+      });
+      if (!found) {
+        // console.log('ballPolarCoord', ballPolarCoord);
+        // console.warn('COULD NOT FIND WINNER');
+      }
+    }
   }
 
-  drawUvTexture() {
-    let xMax = Math.floor(this.fbo.width);
-    let yMax = Math.floor(this.fbo.height);
-    let centerX = xMax/2;
-    let centerY = yMax/2;
-
-    let ctx: CanvasRenderingContext2D = this.fbo.getContext('2d');
-    ctx.save();
-    ctx.drawImage(this.uvTexture, 0,0, xMax, yMax);
-    ctx.restore();
-  }
-
-  drawCrossAir() {
-    let xMax = Math.floor(this.fbo.width);
-    let yMax = Math.floor(this.fbo.height);
-    let centerX = xMax/2;
-    let centerY = yMax/2;
-
-    let ctx: CanvasRenderingContext2D = this.fbo.getContext('2d');
-    ctx.save();
-    let cursorSize = 5;
-    ctx.fillStyle = 'red';
-    ctx.beginPath();
-    ctx.rect(
-      xMax*this.mouseUVCoord.x - cursorSize/2,
-      yMax*this.mouseUVCoord.y - cursorSize/2,
-      cursorSize, cursorSize
-    );
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+  setCurrentWinner(dev: Developer) {
+    if (dev !== this.currentWinner) {
+      this.currentWinner = dev;
+      // console.log('NEW WINNDER IS ', dev.name);
+      this.updateTexture();
+    } else {
+      // console.log('SKIPPING WINNER IS ALREADY ', dev.name);
+    }
   }
 
   getMousePosition ( dom, x, y ) {
@@ -671,9 +637,11 @@ class Application {
     //
     // //reset
     // this.mouseUVCoord.set(0, 0);
+    // let mouseDiskIntersect = new THREE.Vector3();
     //
     // if (intersects.length) {
     //   intersects.forEach((intersection: any) => {
+    //     mouseDiskIntersect = intersection.point;
     //     if (intersection.uv) {
     //       let uv = intersection.uv;
     //       intersection.object.material.map.transformUv( uv );
@@ -682,18 +650,6 @@ class Application {
     //     }
     //   });
     // }
-    //
-    // let insideCircle = (((.5 - this.mouseUVCoord.x)*(.5 - this.mouseUVCoord.x) + (.5 - this.mouseUVCoord.y)*(.5 - this.mouseUVCoord.y)) <= (.5*.5));
-    //
-    // if (insideCircle) {
-    //   this.drawTexture();
-    // }
-  };
-
-  computeWinnerLoser = () => {
-
-    let ballPos = this.ball.position;
-    let insideCircle = ((( - this.mouseUVCoord.x)*(.5 - this.mouseUVCoord.x) + (.5 - this.mouseUVCoord.y)*(.5 - this.mouseUVCoord.y)) <= (.5*.5));
   };
 
   updatePhysicalWorld = () => {
@@ -706,7 +662,7 @@ class Application {
 
     //Mesh update
     this.syncMeshWithBody(this.ball, this.sphereBody);
-    this.drawTexture();
+
     if (this.cannonDebugRenderer) {
       this.cannonDebugRenderer.update();
     }
@@ -714,16 +670,16 @@ class Application {
 
   render = (event: any = null) => {
     this.stats.begin();
-    if (this.renderer && this.scene && this.camera) {
+    if (this.composer && this.scene && this.camera) {
       this.updatePhysicalWorld();
-
-      if (this.sMaterial) {
+      for (let i=0;i<this.hdrMaterials.length; i++) {
         let newEnvMap = this.hdrCubeRenderTarget ? this.hdrCubeRenderTarget.texture : null;
-        if( newEnvMap !== this.sMaterial.envMap ) {
-          this.sMaterial.envMap = newEnvMap;
-          this.sMaterial.needsUpdate = true;
+        if( newEnvMap !== this.hdrMaterials[i].envMap ) {
+          this.hdrMaterials[i].envMap = newEnvMap;
+          this.hdrMaterials[i].needsUpdate = true;
         }
       }
+      this.computeCurrentWinner();
       this.composer.render();
     }
     this.stats.end();
@@ -751,6 +707,6 @@ function radianToDegree(val: number) {
   return val*180/Math.PI;
 }
 
-document.addEventListener("DOMContentLoaded", function () {
+document.addEventListener("DOMContentLoaded",  () => {
   let Wof = new Application();
 });

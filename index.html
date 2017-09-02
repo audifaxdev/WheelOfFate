@@ -16,9 +16,29 @@
         canvas {
             z-index: 0;
         }
+        div.ui-overlay {
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 0;
+            position: fixed;
+            z-index: 10;
+        }
+        div.ui-1 {
+            height: 150px;
+            width: 100%;
+            left: 0;
+            bottom: 0;
+            position: fixed;
+            background: pink;
+            opacity: 1;
+        }
     </style>
 </head>
-<body>
+<!--<body>-->
+<!--<div class="ui-overlay">-->
+    <!--<div class="ui-1"></div>-->
+<!--</div>-->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stats.js/r16/Stats.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/cannon.js/0.6.2/cannon.min.js"></script>
 <script src="./dist/vendor.bundle.js"></script>
