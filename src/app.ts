@@ -2,15 +2,18 @@
 ///<reference path="./extra.d.ts" />
 
 import {TweenLite} from "gsap";
-import * as dat from 'dat-gui';
-
+import {filter} from "lodash";
+import * as THREE from 'three';
+import EffectComposer, { RenderPass, ShaderPass, CopyShader } from 'three-effectcomposer-es6';
 import HDRCubeTextureLoader from './HDRCubeTextureLoader';
 import PMREMGenerator from './PMREMGenerator';
 import PMREMCubeUVPacker from './PMREMCubeUVPacker';
-import EffectComposer, { RenderPass, ShaderPass, CopyShader } from 'three-effectcomposer-es6';
 import UnrealBloomPass from './UnrealBloomPass';
+import * as dat from 'dat-gui';
+import {CannonDebugRenderer} from './CannonDebugRenderer';
+let OrbitControls = require('three-orbit-controls')(THREE);
 
-declare var require;
+declare let require;
 
 declare class Stats {
   REVISION: number;
@@ -24,10 +27,25 @@ declare class Stats {
   update(): void;
 }
 
-import {filter} from "lodash";
-import * as THREE from 'three';
-import {CannonDebugRenderer} from './CannonDebugRenderer';
-let OrbitControls = require('three-orbit-controls')(THREE);
+let fillTextCircle = (context, text,x,y,radius,startRotation, maxAngle) => {
+  let numRadsPerLetter = maxAngle / text.length;
+  context.save();
+  context.translate(x,y);
+  context.rotate(startRotation);
+
+  for(let i=0;i<text.length;i++) {
+    context.save();
+    context.rotate(i*numRadsPerLetter);
+
+    context.fillText(text[i],0,-radius);
+    context.restore();
+  }
+  context.restore();
+};
+
+function radianToDegree(val: number) {
+  return val*180/Math.PI;
+}
 
 interface Developer {
   name: string;
@@ -73,25 +91,27 @@ let defaultCfg: any = {
 };
 
 class Application {
-  stats: Stats;
-  gui: dat.GUI;
-  //global stuff
+  //Cfg
+  cfg: any;
+
+  //THREE
   renderer: THREE.WebGLRenderer;
   composer: EffectComposer;
   renderPass: RenderPass;
   scene: THREE.Scene;
   camera: THREE.PerspectiveCamera;
-
-  //Cfg
-  cfg: any;
-
   hdrCubeRenderTarget: any;
+  controls: THREE.OrbitControls;
+  loadingManager: THREE.LoadingManager;
+  hdrMaterials: THREE.MeshStandardMaterial[];
+  //fbo/texture and other material
+  fbo: HTMLCanvasElement;
+  texture: THREE.CanvasTexture;
 
   //Mesh
   circle: THREE.Mesh;
   ball: THREE.Mesh;
   wheel: THREE.Object3D;
-  text: THREE.Mesh;
   sphereBody: CANNON.Body;
 
   //Interactivity
@@ -100,30 +120,18 @@ class Application {
   onClickPosition: THREE.Vector2;
   mouseUVCoord: THREE.Vector2;
 
-  controls: THREE.OrbitControls;
-
-  loadingManager: THREE.LoadingManager;
-
-  //fbo/texture and other material
-  fbo: HTMLCanvasElement;
-  texture: THREE.CanvasTexture;
-  avatar: HTMLImageElement;
-  uvTexture: HTMLImageElement;
-
-  hdrMaterials: THREE.MeshStandardMaterial[];
+  //tween
+  wheelTween: TweenLite;
 
   //physics
   lastTick: number;
   cannonWorld: CANNON.World;
-  bars: any[];
-
-  currentWinner: Developer;
-
-  //tween
-  wheelTween: TweenLite;
-
-  //debug
   cannonDebugRenderer: CannonDebugRenderer;
+
+  stats: Stats;
+  gui: dat.GUI;
+  currentWinner: Developer;
+  bars: any[];
 
   constructor() {
     this.free();
@@ -242,12 +250,10 @@ class Application {
     this.circle = new THREE.Mesh( geometry, diskmaterial );
     this.circle.position.set(0, 0, this.cfg.container.height/2);
     this.wheel.add(this.circle);
-    // this.scene.add( this.circle );
 
     //Ball
     let sGeometry = new THREE.SphereGeometry( cfgBall.radius, 32, 32 );
-    // let sGeometry = new THREE.BoxGeometry(cfgBall.radius, cfgBall.radius, cfgBall.radius);
-    // let sGeometry = new THREE.TorusKnotGeometry( 8, 4, 75, 10 );
+
     let sMaterial = new THREE.MeshStandardMaterial({
       map: null,
       color: 0xffffff,
@@ -318,7 +324,6 @@ class Application {
   setupPhysicalWorld() {
     let cfgContainer = this.cfg.container;
     let cfgBall = this.cfg.ball;
-    let phxCfg = this.cfg.physicWorld;
 
     this.cannonWorld = new CANNON.World();
     this.cannonWorld.quatNormalizeSkip = 0;
@@ -404,7 +409,6 @@ class Application {
       let bumpBoxMesh = new THREE.Mesh(bumpBoxGeometry, this.hdrMaterials[0]);
 
       this.syncMeshWithBody(bumpBoxMesh, cylinderBody);
-      // bumpBoxMesh.position.set(Math.cos(angularPos),Math.sin(angularPos),0);
 
       this.wheel.add(bumpBoxMesh);
 
@@ -505,27 +509,28 @@ class Application {
 
   updateTexture() {
     let ctx: CanvasRenderingContext2D = this.fbo.getContext('2d');
-
     let xMax = Math.floor(this.fbo.width);
     let yMax = Math.floor(this.fbo.height);
     let centerX = xMax/2;
     let centerY = yMax/2;
-
     let border = 2;
     let selectedDevelopers: Developer[] = filter(developers, (el: Developer) => el.selected);
     let angle = 2*Math.PI/selectedDevelopers.length;
+    let i: number = 0;
+    let insideCircle = (this.ball.position.x * this.ball.position.x) - (this.ball.position.y * this.ball.position.y) <= (this.cfg.container.radius*this.cfg.container.radius);
+    let extra = -this.cfg.container.currentRotation % (2*Math.PI);
+    let mousePolarCoordinate: number = -Math.atan2(this.ball.position.y, this.ball.position.x) + extra;
 
     ctx.clearRect(0, 0, xMax, yMax);
     ctx.lineWidth = border;
     ctx.strokeStyle = '#003300';
 
-    let i: number = 0;
-
     if (selectedDevelopers.length > 1) {
       selectedDevelopers.forEach((dev: Developer) => {
         let startAngle = i*angle;
         let endAngle = (i+1)*angle;
-        let fillStyle = (this.currentWinner === dev) ? 'red':'blue';
+        let mouseInsideSector = (startAngle <= mousePolarCoordinate && mousePolarCoordinate <= endAngle);
+        let fillStyle = (insideCircle && mouseInsideSector) ? 'red':'blue';
         ctx.save();
         ctx.fillStyle = fillStyle;
         ctx.beginPath();
@@ -549,61 +554,38 @@ class Application {
   }
 
   computeCurrentWinner() {
-    let selectedDevelopers: Developer[] = filter(developers, (el: Developer) => el.selected);
-    let angle = 2*Math.PI/selectedDevelopers.length;
-    let i: number = 0;
-
-    //[a,b] circle's center coord
-    //[x,y] point to test
-    //Area of the disk (x-a)^2 - (y - b)^2 <= r^2
-    let insideCircle = (this.ball.position.x * this.ball.position.x) - (this.ball.position.y * this.ball.position.y)
-      <= (this.cfg.container.radius*this.cfg.container.radius);
-
-    if (!insideCircle) {
-      console.warn('BALL IS NOT INSIDE CYLINDER?!?!?!?!');
-    }
-
-    let raycaster = new THREE.Raycaster(this.ball.position, new THREE.Vector3(0,0,1), 0, 100);
-    let intersects = raycaster.intersectObject(this.wheel, true);
-    let intersectionUVCoor = new THREE.Vector2();
-
-    if (intersects.length) {
-      intersects.forEach((intersection: any) => {
-        // console.log('intersection ', intersection);
-        if (intersection.object === this.circle && intersection.uv) {
-          let uv = intersection.uv;
-          intersection.object.material.map.transformUv( uv );
-          // console.log('uv', uv);
-          intersectionUVCoor.set(uv.x, uv.y);
-          return;
-        }
-      });
-    } else {
-      console.warn('BALL POS NOT OVER DISK')
-    }
-
-    intersectionUVCoor.rotateAround(new THREE.Vector2(), -Math.PI/2);
-
-    console.log('uv', intersectionUVCoor);
-
-    let ballPolarCoord = -Math.atan2(intersectionUVCoor.y, intersectionUVCoor.x);
-
-    if (selectedDevelopers.length > 1) {
-      let found = false;
-      selectedDevelopers.forEach((dev: Developer) => {
-        let startAngle = (i*angle);
-        let endAngle = ((i+1)*angle);
-        if ((startAngle <= ballPolarCoord && ballPolarCoord <= endAngle)) {
-          this.setCurrentWinner(dev);
-          found = true;
-        }
-        i++;
-      });
-      if (!found) {
-        // console.log('ballPolarCoord', ballPolarCoord);
-        // console.warn('COULD NOT FIND WINNER');
-      }
-    }
+    // let selectedDevelopers: Developer[] = filter(developers, (el: Developer) => el.selected);
+    // let angle = 2*Math.PI/selectedDevelopers.length;
+    // let i: number = 0;
+    //
+    // //[a,b] circle's center coord
+    // //[x,y] point to test
+    // //Area of the disk (x-a)^2 - (y - b)^2 <= r^2
+    // let insideCircle = (this.ball.position.x * this.ball.position.x) - (this.ball.position.y * this.ball.position.y)
+    //   <= (this.cfg.container.radius*this.cfg.container.radius);
+    //
+    // if (!insideCircle) {
+    //   console.warn('BALL IS NOT INSIDE CYLINDER?!?!?!?!');
+    // }
+    // let extra = this.cfg.container.currentRotation % 2*Math.PI;
+    // let ballPolarCoord = -Math.atan2(this.ball.position.y, this.ball.position.x) - extra;
+    //
+    // if (selectedDevelopers.length > 1) {
+    //   let found = false;
+    //   selectedDevelopers.forEach((dev: Developer) => {
+    //     let startAngle = (i*angle);
+    //     let endAngle = ((i+1)*angle);
+    //     if ((startAngle <= ballPolarCoord && ballPolarCoord <= endAngle)) {
+    //       this.setCurrentWinner(dev);
+    //       found = true;
+    //     }
+    //     i++;
+    //   });
+    //   if (!found) {
+    //     console.warn('COULD NOT FIND WINNER/');
+    //     console.log('ballPolarCoord', ballPolarCoord);
+    //   }
+    // }
   }
 
   setCurrentWinner(dev: Developer) {
@@ -679,6 +661,7 @@ class Application {
           this.hdrMaterials[i].needsUpdate = true;
         }
       }
+      this.updateTexture();
       this.computeCurrentWinner();
       this.composer.render();
     }
@@ -686,27 +669,11 @@ class Application {
     requestAnimationFrame(this.render);
   }
 }
-
-let fillTextCircle = (context, text,x,y,radius,startRotation, maxAngle) => {
-  let numRadsPerLetter = maxAngle / text.length;
-  context.save();
-  context.translate(x,y);
-  context.rotate(startRotation);
-
-  for(let i=0;i<text.length;i++) {
-    context.save();
-    context.rotate(i*numRadsPerLetter);
-
-    context.fillText(text[i],0,-radius);
-    context.restore();
-  }
-  context.restore();
-};
-
-function radianToDegree(val: number) {
-  return val*180/Math.PI;
-}
+declare let Wof;
 
 document.addEventListener("DOMContentLoaded",  () => {
-  let Wof = new Application();
+  Wof = new Application();
 });
+
+export default Wof;
+

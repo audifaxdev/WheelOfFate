@@ -45,7 +45,7 @@ module.exports = {
       }
     }),
 
-// new BabiliPlugin(),
+  new BabiliPlugin(),
 
     new webpack.optimize.CommonsChunkPlugin({
       name: 'vendor',
