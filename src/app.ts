@@ -14,7 +14,6 @@ import {CannonDebugRenderer} from './CannonDebugRenderer';
 let OrbitControls = require('three-orbit-controls')(THREE);
 
 declare let require;
-
 declare class Stats {
   REVISION: number;
   domElement: HTMLDivElement;
@@ -142,6 +141,7 @@ class Application {
     this.scene = null;
     this.renderer = null;
     this.camera = null;
+    this.composer = null;
   }
 
   refresh () {
@@ -221,7 +221,7 @@ class Application {
     let geometry = new THREE.CircleGeometry( this.cfg.container.radius, 32, 0, 2*Math.PI );
 
     let cylinderGeometry = new THREE.CylinderGeometry(
-      this.cfg.container.radius, this.cfg.container.radius.radius, this.cfg.container.height, 32, 4, true
+      this.cfg.container.radius, this.cfg.container.radius, this.cfg.container.height, 32, 4, true
     );
 
     this.texture = new THREE.CanvasTexture(this.fbo, THREE.UVMapping, THREE.RepeatWrapping, THREE.RepeatWrapping);
@@ -259,6 +259,7 @@ class Application {
       color: 0xffffff,
       metalness: 1.0
     });
+
     sMaterial.roughness = 1.0;
     sMaterial.bumpScale = -0.05;
 
@@ -393,7 +394,7 @@ class Application {
 
     let angleFraction = 2*Math.PI / this.cfg.container.nbBars;
 
-    for(let i=0; i< this.cfg.container.nbBars; i++) {
+    for (let i=0; i< this.cfg.container.nbBars; i++) {
       let barRadius = i%2 ? cfgContainer.radius*1.02:cfgContainer.radius;
       let radius = cfgContainer.radius;
       let angularPos = i * angleFraction;
@@ -425,7 +426,7 @@ class Application {
       this.cannonWorld.addBody(wallBody);
       this.bars.push({wall: wallBody, cylinder: cylinderBody, mesh: bumpBoxMesh});
     }
-    this.cannonDebugRenderer = new CannonDebugRenderer(this.scene, this.cannonWorld);
+    // this.cannonDebugRenderer = new CannonDebugRenderer(this.scene, this.cannonWorld);
   }
 
   spinWheel = () => {
@@ -488,14 +489,12 @@ class Application {
       rotation.setFromAxisAngle(new CANNON.Vec3(0, 1, 0), +3*Math.PI/2 - (angularPos + -cfgContainer.currentRotation));
       wall.quaternion.copy(wall.quaternion.mult(rotation));
 
-
       lastTweenTick = now;
       lastAngle = cfgContainer.currentRotation;
     });
   };
 
   moveBall(x: number, y: number , z: number, vel: CANNON.Vec3 = new CANNON.Vec3(999, 999, 999)) {
-
     this.sphereBody.position.set(x, y, z);
     this.sphereBody.velocity = vel;
     this.syncMeshWithBody(this.ball, this.sphereBody);
@@ -508,6 +507,7 @@ class Application {
   }
 
   updateTexture() {
+    console.log('updateTexture');
     let ctx: CanvasRenderingContext2D = this.fbo.getContext('2d');
     let xMax = Math.floor(this.fbo.width);
     let yMax = Math.floor(this.fbo.height);
@@ -517,20 +517,15 @@ class Application {
     let selectedDevelopers: Developer[] = filter(developers, (el: Developer) => el.selected);
     let angle = 2*Math.PI/selectedDevelopers.length;
     let i: number = 0;
-    let insideCircle = (this.ball.position.x * this.ball.position.x) - (this.ball.position.y * this.ball.position.y) <= (this.cfg.container.radius*this.cfg.container.radius);
-    let extra = -this.cfg.container.currentRotation % (2*Math.PI);
-    let mousePolarCoordinate: number = -Math.atan2(this.ball.position.y, this.ball.position.x) + extra;
 
     ctx.clearRect(0, 0, xMax, yMax);
     ctx.lineWidth = border;
     ctx.strokeStyle = '#003300';
-
     if (selectedDevelopers.length > 1) {
       selectedDevelopers.forEach((dev: Developer) => {
         let startAngle = i*angle;
         let endAngle = (i+1)*angle;
-        let mouseInsideSector = (startAngle <= mousePolarCoordinate && mousePolarCoordinate <= endAngle);
-        let fillStyle = (insideCircle && mouseInsideSector) ? 'red':'blue';
+        let fillStyle = (this.currentWinner === dev) ? 'red':'blue';
         ctx.save();
         ctx.fillStyle = fillStyle;
         ctx.beginPath();
@@ -554,47 +549,41 @@ class Application {
   }
 
   computeCurrentWinner() {
-    // let selectedDevelopers: Developer[] = filter(developers, (el: Developer) => el.selected);
-    // let angle = 2*Math.PI/selectedDevelopers.length;
-    // let i: number = 0;
-    //
-    // //[a,b] circle's center coord
-    // //[x,y] point to test
-    // //Area of the disk (x-a)^2 - (y - b)^2 <= r^2
-    // let insideCircle = (this.ball.position.x * this.ball.position.x) - (this.ball.position.y * this.ball.position.y)
-    //   <= (this.cfg.container.radius*this.cfg.container.radius);
-    //
-    // if (!insideCircle) {
-    //   console.warn('BALL IS NOT INSIDE CYLINDER?!?!?!?!');
-    // }
-    // let extra = this.cfg.container.currentRotation % 2*Math.PI;
-    // let ballPolarCoord = -Math.atan2(this.ball.position.y, this.ball.position.x) - extra;
-    //
-    // if (selectedDevelopers.length > 1) {
-    //   let found = false;
-    //   selectedDevelopers.forEach((dev: Developer) => {
-    //     let startAngle = (i*angle);
-    //     let endAngle = ((i+1)*angle);
-    //     if ((startAngle <= ballPolarCoord && ballPolarCoord <= endAngle)) {
-    //       this.setCurrentWinner(dev);
-    //       found = true;
-    //     }
-    //     i++;
-    //   });
-    //   if (!found) {
-    //     console.warn('COULD NOT FIND WINNER/');
-    //     console.log('ballPolarCoord', ballPolarCoord);
-    //   }
-    // }
+    let selectedDevelopers: Developer[] = filter(developers, (el: Developer) => el.selected);
+    let angle = 2*Math.PI/selectedDevelopers.length;
+    let i: number = 0;
+
+    let rayCaster = new THREE.Raycaster(this.ball.position, new THREE.Vector3(0, 0, 1));
+    let intersections = rayCaster.intersectObject(this.circle, true);
+
+    if (intersections.length) {
+      let intersect = intersections[0];
+      //@ts-ignore
+      if (intersect.uv) {
+          //@ts-ignore
+        let uv = intersect.uv;
+        //@ts-ignore
+        intersect.object.material.map.transformUv(uv);
+        let polarCoord = Math.atan2(.5-uv.y, .5-uv.x) - Math.PI;
+        if (polarCoord < 0) {
+          polarCoord = polarCoord + 2*Math.PI;
+        }
+        selectedDevelopers.forEach((dev) => {
+          let startAngle = (i*angle);
+          let endAngle = ((i+1)*angle);
+          if (((startAngle <= polarCoord) && (polarCoord <= endAngle))) {
+            this.setCurrentWinner(dev);
+          }
+          i++;
+        });
+      }
+    }
   }
 
   setCurrentWinner(dev: Developer) {
     if (dev !== this.currentWinner) {
       this.currentWinner = dev;
-      // console.log('NEW WINNDER IS ', dev.name);
       this.updateTexture();
-    } else {
-      // console.log('SKIPPING WINNER IS ALREADY ', dev.name);
     }
   }
 
@@ -611,40 +600,27 @@ class Application {
 
   mouseMove = ( evt ) => {
     evt.preventDefault();
-    //
     // let array = this.getMousePosition( this.renderer.domElement, evt.clientX, evt.clientY );
     // this.onClickPosition.fromArray( array );
-    //
     // let intersects : any[] = this.getIntersects( this.onClickPosition, [this.circle] );
     //
-    // //reset
-    // this.mouseUVCoord.set(0, 0);
-    // let mouseDiskIntersect = new THREE.Vector3();
-    //
     // if (intersects.length) {
-    //   intersects.forEach((intersection: any) => {
-    //     mouseDiskIntersect = intersection.point;
-    //     if (intersection.uv) {
-    //       let uv = intersection.uv;
-    //       intersection.object.material.map.transformUv( uv );
-    //       this.mouseUVCoord.set(uv.x, uv.y);
-    //       return;
-    //     }
-    //   });
+    //   let pt = intersects[0].point;
+    //   this.ball.position.set(pt.x, pt.y, 0);
+    //   this.sphereBody.position.set(pt.x, pt.y, 0);
+    // } else {
+    //   console.warn("could not find intersection");
     // }
   };
 
   updatePhysicalWorld = () => {
-
     let phxCfg = this.cfg.physicWorld;
     let now = new Date().getTime();
     let dt = (now - this.lastTick) / 1000;
     this.cannonWorld.step(phxCfg.step, dt, phxCfg.subStep);
     this.lastTick = now;
-
     //Mesh update
     this.syncMeshWithBody(this.ball, this.sphereBody);
-
     if (this.cannonDebugRenderer) {
       this.cannonDebugRenderer.update();
     }
@@ -661,7 +637,6 @@ class Application {
           this.hdrMaterials[i].needsUpdate = true;
         }
       }
-      this.updateTexture();
       this.computeCurrentWinner();
       this.composer.render();
     }
@@ -669,11 +644,5 @@ class Application {
     requestAnimationFrame(this.render);
   }
 }
-declare let Wof;
 
-document.addEventListener("DOMContentLoaded",  () => {
-  Wof = new Application();
-});
-
-export default Wof;
-
+document.addEventListener("DOMContentLoaded",  () => new Application());

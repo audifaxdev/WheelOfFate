@@ -154,7 +154,7 @@ class HDRCubeTextureLoader {
           texture[ i ].images = texData.image;
 
         } else if ( undefined !== texData.data ) {
-
+          // @ts-ignore
           let dataTexture = new THREE.DataTexture( texData.data, texData.width, texData.height );
           dataTexture.format = texture.format;
           dataTexture.type = texture.type;
